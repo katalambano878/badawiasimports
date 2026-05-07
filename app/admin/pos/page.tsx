@@ -3,6 +3,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 
+interface ProductVariant {
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    sku?: string;
+    option1?: string | null;
+    option2?: string | null;
+    option3?: string | null;
+    color_hex?: string;
+}
+
 interface Product {
     id: string;
     name: string;
@@ -11,9 +23,20 @@ interface Product {
     category: string;
     image: string;
     sku: string;
+    variants: ProductVariant[];
+    optionNames: string[];
 }
 
-interface CartItem extends Product {
+interface CartItem {
+    cartId: string; // Unique per (product + variant) combo
+    productId: string;
+    variantId: string | null;
+    name: string;
+    variantLabel?: string;
+    price: number;
+    quantity: number; // Available stock
+    image: string;
+    sku: string;
     cartQuantity: number;
 }
 
@@ -54,10 +77,8 @@ export default function POSPage() {
         region: ''
     });
 
-    const ghanaRegions = [
-        'Greater Accra', 'Ashanti', 'Western', 'Central', 'Eastern',
-        'Northern', 'Volta', 'Upper East', 'Upper West', 'Brong-Ahafo',
-        'Ahafo', 'Bono', 'Bono East', 'North East', 'Savannah', 'Oti', 'Western North'
+    const regions = [
+        'Metro', 'Regional', 'Rural', 'Other',
     ];
 
     useEffect(() => {
@@ -67,26 +88,44 @@ export default function POSPage() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            // Fetch Products
+            // Fetch Products with variants
             const { data: prodData } = await supabase
                 .from('products')
                 .select(`
-          id, name, price, quantity, sku,
+          id, name, price, quantity, sku, metadata,
           categories(name),
-          product_images(url)
+          product_images(url),
+          product_variants(id, name, price, quantity, sku, option1, option2, option3, metadata)
         `)
+                .eq('status', 'active')
                 .order('name');
 
             if (prodData) {
-                const formatted: Product[] = prodData.map((p: any) => ({
-                    id: p.id,
-                    name: p.name,
-                    price: p.price,
-                    quantity: p.quantity,
-                    category: p.categories?.name || 'Uncategorized',
-                    image: p.product_images?.[0]?.url || 'https://via.placeholder.com/150',
-                    sku: p.sku
-                }));
+                const formatted: Product[] = prodData.map((p: any) => {
+                    const variants: ProductVariant[] = (p.product_variants || []).map((v: any) => ({
+                        id: v.id,
+                        name: v.name,
+                        price: v.price,
+                        quantity: v.quantity ?? 0,
+                        sku: v.sku,
+                        option1: v.option1,
+                        option2: v.option2,
+                        option3: v.option3,
+                        color_hex: v.metadata?.color_hex || '',
+                    }));
+                    const totalVariantStock = variants.reduce((s, v) => s + (v.quantity || 0), 0);
+                    return {
+                        id: p.id,
+                        name: p.name,
+                        price: p.price,
+                        quantity: variants.length > 0 ? totalVariantStock : p.quantity,
+                        category: p.categories?.name || 'Uncategorized',
+                        image: p.product_images?.[0]?.url || 'https://via.placeholder.com/150',
+                        sku: p.sku,
+                        variants,
+                        optionNames: p.metadata?.option_names || [],
+                    };
+                });
                 setProducts(formatted);
 
                 // Extract Categories
@@ -110,29 +149,76 @@ export default function POSPage() {
         }
     };
 
+    // Variant picker modal
+    const [variantPickerProduct, setVariantPickerProduct] = useState<Product | null>(null);
+
+    // Strip "|hex" from option string for display
+    const cleanOption = (val: string | null | undefined) => {
+        if (!val) return '';
+        return val.includes('|') ? val.split('|')[0] : val;
+    };
+
+    const buildVariantLabel = (product: Product, variant: ProductVariant): string => {
+        const parts: string[] = [];
+        const opts = [variant.option1, variant.option2, variant.option3];
+        product.optionNames.forEach((name, idx) => {
+            const val = cleanOption(opts[idx]);
+            if (val) parts.push(`${name}: ${val}`);
+        });
+        return parts.join(', ') || variant.name || '';
+    };
+
     // Cart Functions
-    const addToCart = (product: Product) => {
+    const addProductToCart = (product: Product, variant: ProductVariant | null) => {
+        const cartId = variant ? `${product.id}::${variant.id}` : product.id;
+        const variantLabel = variant ? buildVariantLabel(product, variant) : undefined;
+        const price = variant ? variant.price : product.price;
+        const stock = variant ? variant.quantity : product.quantity;
+        const sku = variant?.sku || product.sku;
+
         setCart(prev => {
-            const existing = prev.find(item => item.id === product.id);
+            const existing = prev.find(item => item.cartId === cartId);
             if (existing) {
+                if (existing.cartQuantity >= stock) return prev;
                 return prev.map(item =>
-                    item.id === product.id
+                    item.cartId === cartId
                         ? { ...item, cartQuantity: item.cartQuantity + 1 }
                         : item
                 );
             }
-            return [...prev, { ...product, cartQuantity: 1 }];
+            return [...prev, {
+                cartId,
+                productId: product.id,
+                variantId: variant?.id || null,
+                name: product.name,
+                variantLabel,
+                price,
+                quantity: stock,
+                image: product.image,
+                sku,
+                cartQuantity: 1,
+            }];
         });
     };
 
-    const removeFromCart = (productId: string) => {
-        setCart(prev => prev.filter(item => item.id !== productId));
+    // Click handler — opens variant picker if product has variants, otherwise adds directly
+    const handleProductClick = (product: Product) => {
+        if (product.variants.length > 0) {
+            setVariantPickerProduct(product);
+        } else {
+            addProductToCart(product, null);
+        }
     };
 
-    const updateQuantity = (productId: string, delta: number) => {
+    const removeFromCart = (cartId: string) => {
+        setCart(prev => prev.filter(item => item.cartId !== cartId));
+    };
+
+    const updateQuantity = (cartId: string, delta: number) => {
         setCart(prev => prev.map(item => {
-            if (item.id === productId) {
+            if (item.cartId === cartId) {
                 const newQty = item.cartQuantity + delta;
+                if (newQty > item.quantity) return item; // Don't exceed stock
                 return newQty > 0 ? { ...item, cartQuantity: newQty } : item;
             }
             return item;
@@ -289,12 +375,13 @@ export default function POSPage() {
             // 2. Create Order Items (with product_name, unit_price, total_price)
             const orderItems = cart.map(item => ({
                 order_id: order.id,
-                product_id: item.id,
-                product_name: item.name,
+                product_id: item.productId,
+                variant_id: item.variantId,
+                product_name: item.variantLabel ? `${item.name} (${item.variantLabel})` : item.name,
                 quantity: item.cartQuantity,
                 unit_price: item.price,
                 total_price: item.price * item.cartQuantity,
-                metadata: { image: item.image, pos_sale: true }
+                metadata: { image: item.image, pos_sale: true, variant_label: item.variantLabel }
             }));
 
             const { error: itemsError } = await supabase
@@ -313,16 +400,20 @@ export default function POSPage() {
 
             if (upsertEmail) {
                 try {
-                    await supabase.rpc('upsert_customer_from_order', {
-                        p_email: upsertEmail,
-                        p_phone: customerPhone || null,
-                        p_full_name: customerName || null,
-                        p_first_name: addressData.firstName || null,
-                        p_last_name: addressData.lastName || null,
-                        p_user_id: null,
-                        p_address: addressData
+                    await fetch('/api/customers/upsert-from-order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: upsertEmail,
+                            phone: customerPhone || null,
+                            full_name: customerName || null,
+                            first_name: addressData.firstName || null,
+                            last_name: addressData.lastName || null,
+                            user_id: null,
+                            address: addressData,
+                            order_number: orderNumber,
+                        }),
                     });
-                    // Refresh customer list silently
                     supabase.from('customers').select('id, full_name, email, phone').order('full_name').limit(200)
                         .then(({ data }) => { if (data) setCustomers(data); });
                 } catch (custErr) {
@@ -330,13 +421,18 @@ export default function POSPage() {
                 }
             }
 
-            // 4. If Cash or Card — mark as paid, reduce stock
+            // 4. If Cash or Card — mark as paid, reduce stock.
+            // mark_order_paid is no longer callable directly by authenticated users
+            // (security audit P0-1); we now call it through an admin-gated API route.
             if (isCashOrCard) {
-                // Call mark_order_paid to reduce stock (uses order_number as order_ref)
                 try {
-                    await supabase.rpc('mark_order_paid', {
-                        order_ref: orderNumber,
-                        moolre_ref: `POS-${paymentMethod.toUpperCase()}-${Date.now()}`
+                    await fetch('/api/admin/orders/mark-paid', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            order_ref: orderNumber,
+                            moolre_ref: `POS-${paymentMethod.toUpperCase()}-${Date.now()}`,
+                        }),
                     });
                 } catch (stockErr) {
                     console.error('Stock reduction error (non-fatal):', stockErr);
@@ -450,7 +546,7 @@ export default function POSPage() {
                                 key={cat}
                                 onClick={() => setActiveCategory(cat)}
                                 className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${activeCategory === cat
-                                    ? 'bg-gray-900 text-white shadow-md'
+                                    ? 'bg-primary text-white shadow-md'
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
                             >
@@ -474,7 +570,7 @@ export default function POSPage() {
                             {filteredProducts.map(product => (
                                 <div
                                     key={product.id}
-                                    onClick={() => addToCart(product)}
+                                    onClick={() => handleProductClick(product)}
                                     className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer overflow-hidden border border-gray-100 group flex flex-col h-full"
                                 >
                                     <div className="aspect-square relative bg-gray-50 shrink-0">
@@ -483,16 +579,22 @@ export default function POSPage() {
                                             alt={product.name}
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                         />
-                                        <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                                        <div className="absolute top-2 right-2 bg-primary/60 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
                                             Qty: {product.quantity}
                                         </div>
+                                        {product.variants.length > 0 && (
+                                            <div className="absolute top-2 left-2 bg-amber-500/90 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full backdrop-blur-sm flex items-center gap-1">
+                                                <i className="ri-layout-grid-line text-[10px]"></i>
+                                                {product.variants.length} {product.variants.length === 1 ? 'variant' : 'variants'}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="p-3 flex flex-col flex-1">
                                         <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-auto">{product.name}</h3>
                                         <div className="flex items-center justify-between mt-2 pt-2">
                                             <span className="text-gray-900 font-bold">GH₵{product.price.toFixed(2)}</span>
-                                            <button className="w-8 h-8 rounded-full bg-gray-50 text-gray-900 flex items-center justify-center group-hover:bg-gray-900 group-hover:text-white transition-colors">
-                                                <i className="ri-add-line"></i>
+                                            <button className="w-8 h-8 rounded-full bg-gray-50 text-gray-900 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+                                                <i className={product.variants.length > 0 ? 'ri-arrow-right-line' : 'ri-add-line'}></i>
                                             </button>
                                         </div>
                                     </div>
@@ -507,7 +609,7 @@ export default function POSPage() {
                     <div className="lg:hidden p-4 border-t border-gray-200 bg-white fixed bottom-0 left-0 right-0 z-30 shadow-2xl safe-area-bottom">
                         <button
                             onClick={() => setIsMobileCartOpen(true)}
-                            className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold flex justify-between px-6 shadow-lg active:scale-95 transition-transform"
+                            className="w-full py-3 bg-primary text-white rounded-xl font-bold flex justify-between px-6 shadow-lg active:scale-95 transition-transform"
                         >
                             <span className="flex items-center text-sm">
                                 <span className="bg-white/20 px-2 py-0.5 rounded mr-2">{cart.reduce((a, b) => a + b.cartQuantity, 0)}</span>
@@ -549,24 +651,29 @@ export default function POSPage() {
                         </div>
                     ) : (
                         cart.map(item => (
-                            <div key={item.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg group hover:bg-gray-100 transition-colors">
+                            <div key={item.cartId} className="flex gap-3 p-3 bg-gray-50 rounded-lg group hover:bg-gray-100 transition-colors">
                                 <div className="w-16 h-16 bg-white rounded-md overflow-hidden flex-shrink-0 border border-gray-200">
                                     <img src={item.image} className="w-full h-full object-cover" alt="" />
                                 </div>
                                 <div className="flex-1 min-w-0 flex flex-col justify-between">
-                                    <div className="flex justify-between items-start">
-                                        <p className="text-sm font-semibold text-gray-900 line-clamp-1">{item.name}</p>
-                                        <button onClick={() => removeFromCart(item.id)} className="text-gray-400 hover:text-red-500">
+                                    <div className="flex justify-between items-start gap-2">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-semibold text-gray-900 line-clamp-1">{item.name}</p>
+                                            {item.variantLabel && (
+                                                <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{item.variantLabel}</p>
+                                            )}
+                                        </div>
+                                        <button onClick={() => removeFromCart(item.cartId)} className="text-gray-400 hover:text-red-500 flex-shrink-0">
                                             <i className="ri-delete-bin-line"></i>
                                         </button>
                                     </div>
                                     <div className="flex items-center justify-between mt-2">
                                         <div className="flex items-center space-x-2 bg-white rounded border border-gray-200 px-1 py-0.5">
-                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded">
+                                            <button onClick={() => updateQuantity(item.cartId, -1)} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded">
                                                 <i className="ri-subtract-line text-xs"></i>
                                             </button>
                                             <span className="text-sm font-semibold w-6 text-center">{item.cartQuantity}</span>
-                                            <button onClick={() => updateQuantity(item.id, 1)} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded">
+                                            <button onClick={() => updateQuantity(item.cartId, 1)} disabled={item.cartQuantity >= item.quantity} className="w-6 h-6 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed">
                                                 <i className="ri-add-line text-xs"></i>
                                             </button>
                                         </div>
@@ -606,13 +713,94 @@ export default function POSPage() {
                         <button
                             onClick={() => { setShowCheckoutModal(true); setCheckoutError(null); }}
                             disabled={cart.length === 0}
-                            className="px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-900 font-bold text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-primary font-bold text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Charge GH₵{grandTotal.toFixed(2)}
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* Variant Picker Modal */}
+            {variantPickerProduct && (
+                <div
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                    onClick={() => setVariantPickerProduct(null)}
+                >
+                    <div
+                        className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="p-5 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-gray-200 flex-shrink-0">
+                                    <img src={variantPickerProduct.image} alt={variantPickerProduct.name} className="w-full h-full object-cover" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h2 className="text-lg font-bold text-gray-900 truncate">{variantPickerProduct.name}</h2>
+                                    <p className="text-sm text-gray-500">Choose a variant to add to cart</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setVariantPickerProduct(null)}
+                                className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                            >
+                                <i className="ri-close-line text-xl"></i>
+                            </button>
+                        </div>
+
+                        <div className="overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {variantPickerProduct.variants.length === 0 ? (
+                                <p className="text-gray-500 text-center py-8 col-span-2">No variants available</p>
+                            ) : (
+                                variantPickerProduct.variants.map(variant => {
+                                    const outOfStock = variant.quantity <= 0;
+                                    const lowStock = variant.quantity > 0 && variant.quantity <= 5;
+                                    const label = buildVariantLabel(variantPickerProduct, variant);
+                                    return (
+                                        <button
+                                            key={variant.id}
+                                            disabled={outOfStock}
+                                            onClick={() => {
+                                                addProductToCart(variantPickerProduct, variant);
+                                                setVariantPickerProduct(null);
+                                            }}
+                                            className={`text-left p-4 rounded-xl border-2 transition-all ${outOfStock
+                                                ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                                                : 'border-gray-200 bg-white hover:border-primary hover:bg-primary/5 cursor-pointer hover:shadow-md'
+                                                }`}
+                                        >
+                                            <div className="flex items-center justify-between gap-2 mb-2">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    {variant.color_hex && (
+                                                        <span
+                                                            className="w-5 h-5 rounded-full border border-gray-300 flex-shrink-0"
+                                                            style={{ backgroundColor: variant.color_hex }}
+                                                        />
+                                                    )}
+                                                    <span className="font-bold text-gray-900 truncate">{label || variant.name}</span>
+                                                </div>
+                                                {outOfStock ? (
+                                                    <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-100 text-red-700 flex-shrink-0">Out</span>
+                                                ) : lowStock ? (
+                                                    <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 flex-shrink-0">Low</span>
+                                                ) : null}
+                                            </div>
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="font-bold text-gray-900">GH₵{variant.price.toFixed(2)}</span>
+                                                <span className="text-gray-500">Stock: {variant.quantity}</span>
+                                            </div>
+                                            {variant.sku && (
+                                                <p className="text-xs text-gray-400 mt-1 font-mono truncate">{variant.sku}</p>
+                                            )}
+                                        </button>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Checkout Modal */}
             {showCheckoutModal && (
@@ -672,7 +860,7 @@ export default function POSPage() {
                                         <i className="ri-printer-line mr-2"></i>
                                         Print Receipt
                                     </button>
-                                    <button onClick={resetCheckout} className="py-3 px-4 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-900 transition-colors">
+                                    <button onClick={resetCheckout} className="py-3 px-4 bg-gray-700 text-white rounded-xl font-semibold hover:bg-primary transition-colors">
                                         New Order
                                     </button>
                                 </div>
@@ -851,7 +1039,7 @@ export default function POSPage() {
                                                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                                                     >
                                                         <option value="">Select Region *</option>
-                                                        {ghanaRegions.map(r => (
+                                                        {regions.map(r => (
                                                             <option key={r} value={r}>{r}</option>
                                                         ))}
                                                     </select>
@@ -951,7 +1139,7 @@ export default function POSPage() {
                                     <button
                                         onClick={handleCheckout}
                                         disabled={processing}
-                                        className="w-full py-4 bg-gray-900 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2"
+                                        className="w-full py-4 bg-primary text-white rounded-xl font-bold text-lg shadow-lg hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-2"
                                     >
                                         {processing ? (
                                             <>

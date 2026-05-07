@@ -1,12 +1,6 @@
 'use client';
 
-import { useCMS } from '@/context/CMSContext';
-
 export default function TermsPage() {
-  const { getSetting } = useCMS();
-  const contactEmail = getSetting('contact_email') || 'maame890@gmail.com';
-  const contactPhone = getSetting('contact_phone') || '054 930 7736';
-
   return (
     <div className="min-h-screen bg-white">
       <div className="bg-gradient-to-br from-gray-50 via-white to-amber-50 py-16">
@@ -83,7 +77,7 @@ export default function TermsPage() {
 
             <h3 className="text-xl font-bold text-gray-900 mb-4 mt-8">3.2 Pricing</h3>
             <p className="text-gray-600 leading-relaxed mb-4">
-              All prices are listed in Ghana Cedis (GHS) and include VAT where applicable. We reserve the right to:
+              All prices are in the currency shown at checkout and include applicable taxes unless stated otherwise. We reserve the right to:
             </p>
             <ul className="space-y-2 text-gray-600 mb-6">
               <li className="flex items-start gap-2">
@@ -181,7 +175,7 @@ export default function TermsPage() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">6. Returns & Refunds</h2>
             <p className="text-gray-600 leading-relaxed mb-4">
-              We have a 24-hour return policy: you have 24 hours after receiving your item to request a return if it is faulty, damaged, or not what you requested. Due to hygiene reasons we cannot accept refunds for other reasons. Items must be unworn/unused, with tags and original packaging; receipt or proof of purchase required. See our <a href="/refund-policy" className="text-gray-900 font-medium hover:underline">Refund Policy</a> for full details on eligibility, process, exchanges, and contact (WhatsApp {contactPhone}, {contactEmail}).
+              Please review our <a href="/refund-policy" className="text-gray-900 font-medium hover:underline">Refund Policy</a> for complete details on return eligibility, process, exchanges, and support.
             </p>
             <p className="text-gray-600 leading-relaxed">
               If we do not have the same item you purchased, a full refund will be made. Refunds are issued to the original payment method once the return is approved; your bank or card company may take additional time to process the refund.
@@ -274,7 +268,7 @@ export default function TermsPage() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">11. Governing Law & Disputes</h2>
             <p className="text-gray-600 leading-relaxed mb-4">
-              These terms are governed by the laws of Ghana. Any disputes arising from these terms or your use of the website shall be subject to the exclusive jurisdiction of the courts of Ghana.
+              These terms are governed by the laws of your jurisdiction. Any disputes arising from these terms or your use of the website shall be subject to the exclusive jurisdiction of the courts in that jurisdiction.
             </p>
             <p className="text-gray-600 leading-relaxed">
               Before initiating any legal action, you agree to first contact us to seek resolution through informal negotiation.
@@ -300,7 +294,7 @@ export default function TermsPage() {
                   <i className="ri-mail-line text-gray-900 text-xl mt-1"></i>
                   <div>
                     <p className="font-medium text-gray-900">Email</p>
-                    <a href="mailto:contact@example.com" className="text-gray-900 hover:underline">contact@example.com</a>
+                    <a href="mailto:info@badawiasimports.com" className="text-gray-900 hover:underline">info@badawiasimports.com</a>
                   </div>
                 </div>
 
@@ -308,7 +302,7 @@ export default function TermsPage() {
                   <i className="ri-phone-line text-gray-900 text-xl mt-1"></i>
                   <div>
                     <p className="font-medium text-gray-900">Phone</p>
-                    <a href="tel:" className="text-gray-900 hover:underline">Contact</a>
+                    <a href="tel:0539781532" className="text-gray-900 hover:underline">0539781532</a>
                   </div>
                 </div>
 
@@ -316,7 +310,7 @@ export default function TermsPage() {
                   <i className="ri-map-pin-line text-gray-900 text-xl mt-1"></i>
                   <div>
                     <p className="font-medium text-gray-900">Address</p>
-                    <p className="text-gray-600">Premium Store Ghana<br />East Legon, Accra<br />Ghana</p>
+                    <p className="text-gray-600">Tamale and Accra</p>
                   </div>
                 </div>
               </div>

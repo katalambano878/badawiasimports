@@ -11,6 +11,7 @@ export default function AdminReviewsPage() {
 
   useEffect(() => {
     fetchReviews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 
   const fetchReviews = async () => {
@@ -44,7 +45,7 @@ export default function AdminReviewsPage() {
           rating: r.rating,
           title: r.title,
           comment: r.content,
-          date: new Date(r.created_at).toLocaleDateString(),
+          date: new Date(r.created_at ?? 0).toLocaleDateString(),
           status: r.status || 'Pending',
           helpful: r.helpful || 0
         }));
@@ -203,7 +204,7 @@ export default function AdminReviewsPage() {
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => handleBulkAction('Approve')}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-900 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer"
+                className="px-4 py-2 bg-gray-700 hover:bg-primary text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer"
               >
                 <i className="ri-check-line mr-2"></i>
                 Approve

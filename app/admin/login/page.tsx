@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlError = searchParams?.get('error');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,13 +23,8 @@ export default function AdminLoginPage() {
     setError('');
     setIsLoading(true);
 
-    // reCAPTCHA verification
-    const isHuman = await getToken('admin_login');
-    if (!isHuman) {
-      setError('Security verification failed. Please try again.');
-      setIsLoading(false);
-      return;
-    }
+    // reCAPTCHA when configured; if it fails we still attempt login so misconfiguration doesn't lock you out
+    await getToken('admin_login');
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -37,11 +35,16 @@ export default function AdminLoginPage() {
       if (error) throw error;
 
       if (data.session) {
-        router.push('/admin');
-        router.refresh();
+        // Full page navigation so the admin layout sees the new session (avoids client-side race)
+        window.location.href = '/admin';
+        return;
       }
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      const msg = err?.message || 'Login failed';
+      setError(msg);
+      if (err?.message?.toLowerCase().includes('email') && err?.message?.toLowerCase().includes('confirm')) {
+        setError(`${msg} Check your inbox for the confirmation link, or turn off "Confirm email" in Supabase → Authentication → Providers → Email.`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -52,13 +55,35 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block">
-            <img src="/favicon.png" alt="Store Logo" className="h-12 w-auto mx-auto" />
+            <img src="/logo.png" alt="Store Logo" className="h-12 w-auto mx-auto" />
           </Link>
           <h1 className="text-3xl font-bold text-gray-900 mt-6 mb-2">Admin Login</h1>
           <p className="text-gray-600">Sign in to access the admin dashboard</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+          {urlError === 'unauthorized' && (
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start space-x-3">
+              <i className="ri-shield-user-line text-amber-600 text-xl mt-0.5"></i>
+              <div>
+                <p className="text-amber-800 font-semibold">No admin access</p>
+                <p className="text-amber-700 text-sm mt-1">
+                  Your account does not have admin or staff rights. If you should have access, an existing admin must set your role in Supabase (Dashboard → Table Editor → profiles → set <code className="bg-amber-100 px-1 rounded">role</code> to <code className="bg-amber-100 px-1 rounded">admin</code> or <code className="bg-amber-100 px-1 rounded">staff</code>).
+                </p>
+              </div>
+            </div>
+          )}
+          {urlError === 'no_profile' && (
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start space-x-3">
+              <i className="ri-user-search-line text-amber-600 text-xl mt-0.5"></i>
+              <div>
+                <p className="text-amber-800 font-semibold">Profile not found</p>
+                <p className="text-amber-700 text-sm mt-1">
+                  Your account exists but has no profile row. Run the SQL in the instructions below in Supabase SQL Editor to grant yourself admin access.
+                </p>
+              </div>
+            </div>
+          )}
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-3">
               <i className="ri-error-warning-line text-red-600 text-xl mt-0.5"></i>
@@ -81,7 +106,7 @@ export default function AdminLoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-600 focus:border-gray-600"
-                  placeholder="admin@elegancemart.com"
+                  placeholder="admin@example.com"
                   required
                 />
               </div>
@@ -114,7 +139,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={isLoading || verifying}
-              className="w-full bg-gray-900 hover:bg-gray-800 text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              className="w-full bg-primary hover:bg-primary text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {isLoading || verifying ? (
                 <span className="flex items-center justify-center space-x-2">
@@ -138,5 +163,17 @@ export default function AdminLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <AdminLoginForm />
+    </Suspense>
   );
 }

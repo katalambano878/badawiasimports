@@ -9,11 +9,16 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 // for orders that haven't been paid within 15 minutes
 export async function GET(request: Request) {
   try {
-    // Verify cron secret to prevent unauthorized access
+    // Fail-closed: refuse all calls unless a CRON_SECRET is configured AND matches the bearer token.
+    // Without this, anyone can hit this endpoint to spam every pending customer with payment reminders.
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
-    
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+
+    if (!cronSecret) {
+      console.error('[Payment Reminders] CRON_SECRET not configured — refusing to run.');
+      return NextResponse.json({ error: 'Cron is not configured' }, { status: 503 });
+    }
+    if (authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

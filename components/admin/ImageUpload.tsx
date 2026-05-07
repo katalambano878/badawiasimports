@@ -22,7 +22,7 @@ export default function ImageUpload({
     onChange,
     bucket = 'site-assets',
     folder = 'branding',
-    accept = 'image/jpeg,image/png,image/gif,image/webp,image/svg+xml,image/x-icon',
+    accept = 'image/jpeg,image/png,image/gif,image/webp,image/x-icon',
     maxSizeMB = 5,
     previewHeight = 120,
 }: ImageUploadProps) {
@@ -192,7 +192,7 @@ export default function ImageUpload({
                                         Click to upload or drag & drop
                                     </p>
                                     <p className="text-xs text-gray-400 mt-1">
-                                        JPG, PNG, GIF, WebP, SVG, ICO • Max {maxSizeMB}MB
+                                        JPG, PNG, GIF, WebP, ICO • Max {maxSizeMB}MB
                                     </p>
                                 </div>
                             </div>

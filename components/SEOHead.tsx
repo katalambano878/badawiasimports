@@ -1,15 +1,13 @@
 import { Metadata } from 'next';
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://luxury-strand-haven.vercel.app';
-const SITE_NAME = 'Luxury Strand Haven';
-const DEFAULT_OG = '/og-home.png';
+const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.badawiasimports.com').replace(/\/+$/, '');
+const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || "BADAWIA'S IMPORTS";
+const DEFAULT_OG = '/og-image.png';
 
 const BASE_KEYWORDS = [
-  'luxury wigs Ghana', 'human hair wigs Ghana', 'custom wigs Ghana',
-  'lace front wigs Ghana', 'HD lace wigs Ghana', 'virgin hair bundles Ghana',
-  'hair extensions Ghana', 'closures and frontals Ghana', 'wig shop Ghana',
-  'premium hair Ghana', 'Luxury Strand Haven', '100% human hair',
-  'buy wigs online Ghana', 'wigs Accra', 'hair bundles Ghana',
+  'online store',
+  'e-commerce',
+  'shop online',
 ];
 
 interface SEOProps {
@@ -31,7 +29,7 @@ interface SEOProps {
 
 export function generateMetadata({
   title,
-  description = 'Shop 100% human hair wigs, bundles, closures & frontals at Luxury Strand Haven. Custom luxury wigs, HD lace, raw hair bundles & more. Fast delivery across Ghana.',
+  description = process.env.NEXT_PUBLIC_SITE_DESCRIPTION || "BADAWIA'S IMPORTS — quality imports across Ghana.",
   keywords = [],
   ogImage = DEFAULT_OG,
   ogImageAlt,
@@ -53,7 +51,7 @@ export function generateMetadata({
       images: [{ url: ogImage, width: 1200, height: 630, alt: ogImageAlt || pageTitle, type: 'image/png' }],
       type: ogType as any,
       siteName: SITE_NAME,
-      locale: 'en_GH',
+      locale: 'en',
       url: canonicalUrl,
     },
     twitter: {
@@ -61,8 +59,8 @@ export function generateMetadata({
       title: pageTitle,
       description,
       images: [{ url: ogImage, alt: ogImageAlt || pageTitle }],
-      creator: '@luxurystrandhaven',
-      site: '@luxurystrandhaven',
+      creator: '',
+      site: '',
     },
     robots: noindex
       ? { index: false, follow: false }
@@ -103,7 +101,7 @@ export function generateProductSchema(product: {
       priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       shippingDetails: {
         '@type': 'OfferShippingDetails',
-        shippingRate: { '@type': 'MonetaryAmount', currency: 'GHS' },
+        shippingRate: { '@type': 'MonetaryAmount', currency: product.currency || 'GHS' },
         shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'GH' },
       },
     },
@@ -152,7 +150,7 @@ export function generateItemListSchema(items: { name: string; url: string; image
   return {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: 'Hair Products — Luxury Strand Haven',
+    name: `Products — ${SITE_NAME}`,
     itemListElement: items.map((item) => ({
       '@type': 'ListItem',
       position: item.position,

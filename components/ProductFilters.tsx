@@ -102,7 +102,7 @@ export default function ProductFilters({ onFilterChange }: ProductFiltersProps) 
         <div className="flex items-center space-x-2">
           <h3 className="text-lg font-bold text-gray-900">Filters</h3>
           {activeFilterCount > 0 && (
-            <span className="bg-gray-900 text-white text-xs font-bold px-2 py-1 rounded-full">
+            <span className="bg-primary text-white text-xs font-bold px-2 py-1 rounded-full">
               {activeFilterCount}
             </span>
           )}

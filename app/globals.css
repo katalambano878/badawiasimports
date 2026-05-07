@@ -3,6 +3,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* BADAWIA'S IMPORTS brand colors — navy / red / cyan */
+:root {
+  --color-primary: #0D1B45;
+  --color-primary-dark: #060E28;
+  --color-accent: #CC1414;
+  --color-cyan: #1ABCDF;
+  --color-surface: #FFFFFF;
+  --color-surface-subtle: #F7F8FC;
+}
+
 /* Hide scrollbar for horizontal carousels */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -331,15 +341,15 @@ img {
    ======================================== */
 
 .glass {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(254, 242, 242, 0.5);
 }
 
 .glass-dark {
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(127, 29, 29, 0.6);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }

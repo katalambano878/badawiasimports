@@ -99,7 +99,7 @@ export default function ReturnConfirmationPage() {
             <div className="space-y-3">
               <Link
                 href="/account"
-                className="block w-full bg-gray-900 hover:bg-gray-800 text-white py-4 rounded-lg font-semibold transition-colors whitespace-nowrap"
+                className="block w-full bg-primary hover:bg-primary text-white py-4 rounded-lg font-semibold transition-colors whitespace-nowrap"
               >
                 Track Return Status
               </Link>

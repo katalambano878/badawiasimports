@@ -2,6 +2,12 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import {
+  DEFAULT_CONTACT_ADDRESS,
+  DEFAULT_CONTACT_MAP_LINK,
+  DEFAULT_CONTACT_PHONE,
+  applyCanonicalContact,
+} from '@/lib/contact';
 
 // ── Types ──────────────────────────────────────────────────────────
 export interface SiteSettings {
@@ -184,37 +190,37 @@ export interface CMSContextType {
 // ── Defaults ───────────────────────────────────────────────────────
 export const defaultSettings: SiteSettings = {
     // General
-    site_name: 'Luxury Strand Haven',
-    site_tagline: 'Your tagline here.',
+    site_name: process.env.NEXT_PUBLIC_SITE_NAME || "BADAWIA'S IMPORTS",
+    site_tagline: 'Quality Imports Across Ghana',
     site_logo: '/logo.png',
-    site_favicon: '/favicon.ico',
-    contact_email: 'maame890@gmail.com',
-    contact_phone: '054 930 7736',
-    contact_address: '',
+    site_favicon: '/logo.png',
+    contact_email: '',
+    contact_phone: DEFAULT_CONTACT_PHONE,
+    contact_address: DEFAULT_CONTACT_ADDRESS,
     social_facebook: '',
-    social_instagram: '',
+    social_instagram: 'https://instagram.com/badawias_imports',
     social_twitter: '',
-    social_tiktok: '',
+    social_tiktok: 'https://tiktok.com/@badawias_imports1',
     social_youtube: '',
-    social_snapchat: '',
-    social_whatsapp: '',
+    social_snapchat: 'https://snapchat.com/add/badawia1234',
+    social_whatsapp: DEFAULT_CONTACT_PHONE,
     currency: 'GHS',
     currency_symbol: 'GH₵',
 
-    // Appearance — black & white
-    primary_color: '#000000',
-    secondary_color: '#171717',
-    accent_color: '#404040',
-    header_bg: '#ffffff',
-    header_text: '#171717',
-    footer_bg: '#0a0a0a',
-    footer_text: '#ffffff',
+    // Appearance — BADAWIA'S IMPORTS brand colors
+    primary_color: '#0D1B45',
+    secondary_color: '#FFFFFF',
+    accent_color: '#CC1414',
+    header_bg: '#FFFFFF',
+    header_text: '#0D1B45',
+    footer_bg: '#0D1B45',
+    footer_text: '#FFFFFF',
 
     // Hero
-    hero_headline: 'Crown Your Look with Premium Hair',
-    hero_subheadline: 'Human hair wigs & extensions, handpicked for quality and style.',
+    hero_headline: "Quality Imports Across Ghana",
+    hero_subheadline: 'Shop from Tamale & Accra. Fast delivery.',
     hero_image: '/hero.jpg',
-    hero_video: '/wighero.mp4',
+    hero_video: '/hero-video.mp4',
     hero_badge_label: 'Exclusive Offer',
     hero_badge_text: '25% Off',
     hero_badge_subtext: 'On your first dedicated order',
@@ -236,7 +242,7 @@ export const defaultSettings: SiteSettings = {
     feature1_desc: 'Pick up at our store',
     feature2_icon: 'ri-arrow-left-right-line',
     feature2_title: 'Easy Returns',
-    feature2_desc: '24-hour return policy for faulty/damaged/wrong items',
+    feature2_desc: 'Hassle-free returns support',
     feature3_icon: 'ri-customer-service-2-line',
     feature3_title: '24/7 Support',
     feature3_desc: 'Dedicated service',
@@ -248,9 +254,9 @@ export const defaultSettings: SiteSettings = {
     about_hero_title: 'Our Story',
     about_hero_subtitle: 'Customize this in Admin → Settings and CMS content.',
     about_story_title: 'About Us',
-    about_story_content: 'Replace this content in store settings or CMS. Tell your brand story, values, and mission here.',
+    about_story_content: '',
     about_story_image: '/about.jpg',
-    about_founder_name: 'Store Name',
+    about_founder_name: 'Badawia',
     about_founder_title: 'Founder',
     about_mission1_title: 'Our Mission',
     about_mission1_content: 'Add your mission and values in Admin → Settings.',
@@ -266,11 +272,11 @@ export const defaultSettings: SiteSettings = {
     contact_hero_subtitle: 'Questions? We’re here to help.',
     contact_hours: 'Mon–Sat, 9am–6pm',
     contact_whatsapp_hours: 'Chat with us on WhatsApp',
-    contact_map_link: 'https://maps.google.com',
+    contact_map_link: DEFAULT_CONTACT_MAP_LINK,
     contact_team_json: '[]',
 
     // Header
-    header_logo_height: '56',
+    header_logo_height: '32',
     header_nav_links_json: JSON.stringify([
         { label: 'Shop', href: '/shop' },
         { label: 'Categories', href: '/categories' },
@@ -283,8 +289,8 @@ export const defaultSettings: SiteSettings = {
     header_show_account: 'true',
 
     // Footer
-    footer_logo: '/haven%20logo%20white.png',
-    footer_logo_height: '56',
+    footer_logo: '/logo.png',
+    footer_logo_height: '36',
     footer_newsletter_title: 'Join Our Community',
     footer_newsletter_subtitle: 'Get exclusive access to new arrivals, secret sales, and more.',
     footer_show_newsletter: 'true',
@@ -298,7 +304,7 @@ export const defaultSettings: SiteSettings = {
     footer_col2_title: 'Customer Care',
     footer_col2_links_json: JSON.stringify([
         { label: 'Contact Us', href: '/contact' },
-        { label: 'Track My Order', href: '/order-tracking' },
+        { label: 'Track My Order', href: '/account?tab=orders' },
         { label: 'Shipping Info', href: '/shipping' },
         { label: 'Returns Policy', href: '/returns' },
         { label: 'Refund Policy', href: '/refund-policy' }
@@ -318,7 +324,7 @@ export const defaultSettings: SiteSettings = {
     seo_title: '',
     seo_description: '',
     seo_keywords: '',
-    seo_og_image: '',
+    seo_og_image: '/logo.png',
     seo_google_analytics: '',
 
     // Integrations
@@ -369,6 +375,7 @@ export function CMSProvider({ children }: { children: ReactNode }) {
                         merged[row.key] = typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
                     }
                 });
+                applyCanonicalContact(merged as unknown as Record<string, string>); // ensure contact defaults exist
                 setSettings(merged);
             }
 

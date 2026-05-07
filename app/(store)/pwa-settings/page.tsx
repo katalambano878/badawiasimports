@@ -107,8 +107,8 @@ export default function PWASettingsPage() {
 
           <div className="bg-white rounded-2xl shadow-sm p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                <i className="ri-notification-line text-purple-700"></i>
+              <div className="w-10 h-10 bg-primary-soft rounded-full flex items-center justify-center">
+                <i className="ri-notification-line text-primary"></i>
               </div>
               Notifications
             </h2>
@@ -123,7 +123,7 @@ export default function PWASettingsPage() {
                 {notificationPermission === 'default' && (
                   <button
                     onClick={requestNotificationPermission}
-                    className="px-4 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-800 transition-colors whitespace-nowrap"
+                    className="px-4 py-2 bg-primary-dark text-white rounded-lg hover:bg-primary-dark transition-colors whitespace-nowrap"
                   >
                     Enable
                   </button>
@@ -236,12 +236,12 @@ export default function PWASettingsPage() {
                 </div>
                 <p className="text-sm text-blue-800">Instant page loads with smart caching</p>
               </div>
-              <div className="p-4 bg-purple-50 rounded-xl">
+              <div className="p-4 bg-primary-soft rounded-xl">
                 <div className="flex items-center gap-3 mb-2">
-                  <i className="ri-home-line text-purple-700 text-xl"></i>
-                  <span className="font-semibold text-purple-900">Home Screen</span>
+                  <i className="ri-home-line text-primary text-xl"></i>
+                  <span className="font-semibold text-primary-dark">Home Screen</span>
                 </div>
-                <p className="text-sm text-purple-800">Add to home screen like a native app</p>
+                <p className="text-sm text-primary">Add to home screen like a native app</p>
               </div>
               <div className="p-4 bg-orange-50 rounded-xl">
                 <div className="flex items-center gap-3 mb-2">

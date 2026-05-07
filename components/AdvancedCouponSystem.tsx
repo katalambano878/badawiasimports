@@ -110,7 +110,7 @@ export default function AdvancedCouponSystem({
               />
               <button
                 onClick={handleApply}
-                className="bg-gray-900 hover:bg-gray-900 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap"
+                className="bg-primary hover:bg-primary text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap"
               >
                 Apply
               </button>

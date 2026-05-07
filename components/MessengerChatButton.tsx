@@ -46,7 +46,7 @@ export default function MessengerChatButton() {
     <>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-full shadow-2xl hover:scale-110 transition-transform z-50 flex items-center justify-center"
+        className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-[#1ABCDF] to-[#0D1B45] text-white rounded-full shadow-2xl hover:scale-110 transition-transform z-50 flex items-center justify-center"
       >
         {isOpen ? (
           <i className="ri-close-line text-2xl"></i>
@@ -57,10 +57,10 @@ export default function MessengerChatButton() {
 
       {isOpen && (
         <div className="fixed bottom-24 right-6 w-96 h-[600px] bg-white rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden border border-gray-200">
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4">
+          <div className="bg-gradient-to-r from-[#1ABCDF] to-[#0D1B45] text-white p-4">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-12 h-12 flex items-center justify-center bg-white text-purple-600 rounded-full font-bold text-xl">
+                <div className="w-12 h-12 flex items-center justify-center bg-white text-primary rounded-full font-bold text-xl">
                   <i className="ri-customer-service-2-fill"></i>
                 </div>
                 <div className="absolute bottom-0 right-0 w-3 h-3 bg-gray-400 rounded-full border-2 border-white"></div>

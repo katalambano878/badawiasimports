@@ -2,8 +2,8 @@ import { Metadata } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import ProductDetailClient from './ProductDetailClient';
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://luxury-strand-haven.vercel.app';
-const SITE_NAME = 'Luxury Strand Haven';
+const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.badawiasimports.com').replace(/\/+$/, '');
+const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || "BADAWIA'S IMPORTS";
 
 async function getProduct(slug: string) {
   try {
@@ -29,17 +29,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   if (!product) {
     return {
-      title: 'Product Not Found | Luxury Strand Haven',
+      title: `Product Not Found | ${SITE_NAME}`,
       robots: { index: false, follow: false },
     };
   }
 
   const productUrl = `${SITE_URL}/product/${slug}`;
-  const ogImage = product.images?.[0]?.url || '/og-shop.png';
+  const ogImage = product.images?.[0]?.url || '/opengraph-image';
   const title = `${product.name} | ${SITE_NAME}`;
   const description = product.description
     ? `${product.description.slice(0, 155)}...`
-    : `Shop ${product.name} at Luxury Strand Haven. 100% human hair — premium quality, fast delivery across Ghana.`;
+    : `Shop ${product.name}. Quality products, fast delivery.`;
 
   return {
     title: product.name,
@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       url: productUrl,
       type: 'website',
       siteName: SITE_NAME,
-      locale: 'en_GH',
+      locale: 'en',
       images: [{ url: ogImage, width: 1200, height: 630, alt: `${product.name} — ${SITE_NAME}` }],
     },
     twitter: {
@@ -62,12 +62,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     alternates: { canonical: productUrl },
     keywords: [
       product.name,
-      `${product.name} Ghana`,
+      `buy ${product.name}`,
       `buy ${product.name} Ghana`,
-      'luxury wigs Ghana',
-      'human hair Ghana',
+      `${product.name} Tamale`,
+      `${product.name} Accra`,
+      'quality products Ghana',
+      'online shopping Ghana',
       SITE_NAME,
-    ].join(', '),
+    ],
   };
 }
 

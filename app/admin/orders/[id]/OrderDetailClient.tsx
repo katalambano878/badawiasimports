@@ -24,7 +24,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const [trackingNumber, setTrackingNumber] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
   const [statusUpdating, setStatusUpdating] = useState(false);
-  const [storeName, setStoreName] = useState('Luxury Strand Haven');
+  const [storeName, setStoreName] = useState(process.env.NEXT_PUBLIC_SITE_NAME || "BADAWIA'S IMPORTS");
   const [storeEmail, setStoreEmail] = useState('');
 
   const handlePrint = () => {
@@ -53,6 +53,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
       .then(({ data }) => { if (data?.value) setStoreName(typeof data.value === 'string' ? data.value : String(data.value)); });
     supabase.from('store_settings').select('value').eq('key', 'contact_email').single()
       .then(({ data }) => { if (data?.value) setStoreEmail(typeof data.value === 'string' ? data.value : String(data.value)); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch when orderId changes
   }, [orderId]);
 
   const fetchOrderDetails = async () => {
@@ -115,8 +116,9 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
       }
 
       if (error) throw error;
+      if (!data) throw new Error('Order not found');
       setOrder(data);
-      setTrackingNumber(data.metadata?.tracking_number || '');
+      setTrackingNumber((data.metadata as any)?.tracking_number || '');
       setAdminNotes(data.notes || '');
 
     } catch (err: any) {
@@ -251,7 +253,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const statusColors: any = {
     'pending': 'bg-amber-100 text-amber-700 border-amber-200',
     'processing': 'bg-blue-100 text-blue-700 border-blue-200',
-    'shipped': 'bg-purple-100 text-purple-700 border-purple-200',
+    'shipped': 'bg-primary-soft text-primary border-primary/20',
     'delivered': 'bg-gray-100 text-gray-700 border-gray-200',
     'cancelled': 'bg-red-100 text-red-700 border-red-200',
     'awaiting_payment': 'bg-gray-100 text-gray-700 border-gray-200'
@@ -268,7 +270,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
 
   // Derive timeline from status (simplified logic as we don't have full history table joined here yet)
   const timeline = [
-    { status: 'Order Placed', date: new Date(order.created_at).toLocaleString(), completed: true },
+    { status: 'Order Placed', date: new Date(order.created_at ?? 0).toLocaleString(), completed: true },
     { status: 'Payment', date: order.payment_status, completed: order.payment_status === 'paid' },
     { status: 'Processing', date: '', completed: ['processing', 'shipped', 'delivered'].includes(order.status) },
     { status: 'Packaged', date: '', completed: ['shipped', 'delivered'].includes(order.status) },
@@ -372,7 +374,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
           </div>
           <button
             onClick={handlePrint}
-            className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            className="flex items-center space-x-2 bg-primary hover:bg-primary text-white px-4 py-2 rounded-lg font-medium transition-colors"
           >
             <i className="ri-printer-line text-lg"></i>
             <span>Print Order</span>
@@ -519,7 +521,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               <button
                 onClick={() => handleUpdateStatus()}
                 disabled={statusUpdating}
-                className="w-full mt-4 bg-gray-700 hover:bg-gray-800 text-white py-3 rounded-lg font-semibold transition-colors whitespace-nowrap disabled:opacity-50"
+                className="w-full mt-4 bg-gray-700 hover:bg-primary text-white py-3 rounded-lg font-semibold transition-colors whitespace-nowrap disabled:opacity-50"
               >
                 {statusUpdating ? 'Updating...' : 'Update Status'}
               </button>
@@ -617,7 +619,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               <button
                 onClick={() => handleUpdateStatus()}
                 disabled={statusUpdating}
-                className="w-full mt-3 bg-gray-700 hover:bg-gray-800 text-white py-2 rounded-lg font-medium transition-colors whitespace-nowrap disabled:opacity-50"
+                className="w-full mt-3 bg-gray-700 hover:bg-primary text-white py-2 rounded-lg font-medium transition-colors whitespace-nowrap disabled:opacity-50"
               >
                 Save Note
               </button>

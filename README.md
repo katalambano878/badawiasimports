@@ -1,24 +1,19 @@
-# E-commerce Storefront
+# YOUR_PROJECT_NAME
 
-A full-featured online store built with Next.js, Supabase, and modern payment integrations.
+> YOUR_PROJECT_DESCRIPTION
 
 ## Getting Started
 
-1. Install dependencies:
-
 ```bash
 npm install
-```
-
-2. Copy environment variables and configure (see `.env.example` if present, or use your deployment docs).
-
-3. Run the development server:
-
-```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3001](http://localhost:3001) in your browser.
+
+## Environment Variables
+
+Copy `.env.local` and fill in your values (see inline comments for each variable).
 
 ## Scripts
 
@@ -29,3 +24,11 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## Customization
 
 Configure your store via environment variables and the Admin → Settings panel (site name, contact info, payments, SEO, etc.).
+
+## Deployment
+
+YOUR_DEPLOYMENT_INSTRUCTIONS
+
+## License
+
+YOUR_LICENSE

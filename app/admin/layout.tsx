@@ -10,7 +10,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  const pathname = usePathname() || '';
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -21,51 +21,40 @@ export default function AdminLayout({
 
   // Module Filtering State
   const [enabledModules, setEnabledModules] = useState<string[]>([]);
-  const [storeName, setStoreName] = useState('Luxury Strand Haven');
-  const [storeLogo, setStoreLogo] = useState<string | null>(null);
+  const [storeName, setStoreName] = useState(process.env.NEXT_PUBLIC_SITE_NAME || "BADAWIA'S IMPORTS");
+  const [storeLogo, setStoreLogo] = useState<string | null>('/logo.png');
 
   useEffect(() => {
-    async function checkAuth() {
-      const { data: { session } } = await supabase.auth.getSession();
-
+    // Auth + role enforcement now happens server-side in middleware.ts before this
+    // page is even sent to the browser. We only need to populate the UI bits
+    // (user email, role badge). If we somehow render here without a session,
+    // middleware has a bug — falling back to a client redirect just to be safe.
+    async function loadUser() {
       if (pathname === '/admin/login') {
         setIsLoading(false);
         return;
       }
 
-      if (!session) {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        setIsLoading(false);
         router.push('/admin/login');
         return;
       }
 
-      // Check user role from profiles table
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', session.user.id)
+        .eq('id', authUser.id)
         .single();
 
-      if (profileError || !profile) {
-        console.error('Failed to fetch user profile');
-        router.push('/admin/login');
-        return;
-      }
-
-      // Only allow admin and staff roles
-      if (profile.role !== 'admin' && profile.role !== 'staff') {
-        console.warn('User does not have admin/staff role');
-        await supabase.auth.signOut();
-        router.push('/admin/login?error=unauthorized');
-        return;
-      }
-
-      setUser(session.user);
-      setUserRole(profile.role);
+      setUser(authUser);
+      setUserRole(profile?.role || null);
       setIsAuthenticated(true);
       setIsLoading(false);
     }
 
-    checkAuth();
+    loadUser();
   }, [pathname, router]);
 
   useEffect(() => {
@@ -103,7 +92,9 @@ export default function AdminLayout({
       data?.forEach((row: { key: string; value: unknown }) => {
         const v = row.value != null ? String(row.value) : '';
         if (row.key === 'site_name' && v) setStoreName(v);
-        if (row.key === 'site_logo' && v) setStoreLogo(v);
+        if (row.key === 'site_logo' && v) {
+          setStoreLogo(v === '/logo.svg' || v === '/footer-logo.png' ? '/logo.png' : v);
+        }
       });
     });
   }, []);
@@ -186,6 +177,11 @@ export default function AdminLayout({
       title: 'Coupons',
       icon: 'ri-coupon-2-line',
       path: '/admin/coupons'
+    },
+    {
+      title: 'Sale Pricing',
+      icon: 'ri-fire-line',
+      path: '/admin/sale-pricing'
     },
     {
       title: 'Customer Insights',

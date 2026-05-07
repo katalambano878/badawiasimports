@@ -72,7 +72,7 @@ export default function OfflinePage() {
         <div className="space-y-3">
           <button
             onClick={() => window.location.reload()}
-            className="w-full bg-gray-900 hover:bg-gray-800 text-white py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+            className="w-full bg-primary hover:bg-primary text-white py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
           >
             <i className="ri-refresh-line"></i>
             Try Again

@@ -16,7 +16,7 @@ interface Module {
 const colorMap: Record<string, string> = {
   red: 'bg-red-100 text-red-600',
   blue: 'bg-blue-100 text-blue-600',
-  purple: 'bg-purple-100 text-purple-600',
+  purple: 'bg-primary-soft text-primary',
   orange: 'bg-orange-100 text-orange-600',
   amber: 'bg-amber-100 text-amber-600',
   yellow: 'bg-yellow-100 text-yellow-600',
@@ -118,7 +118,7 @@ export default function ModulesPage() {
       if (data) {
         setModules(prev => prev.map(m => {
           const dbState = data.find((d: any) => d.id === m.id);
-          return dbState ? { ...m, enabled: dbState.enabled } : m;
+          return dbState ? { ...m, enabled: !!dbState.enabled } : m;
         }));
       }
     } catch (err) {
@@ -200,7 +200,7 @@ export default function ModulesPage() {
             )}
             <button
               type="submit"
-              className="w-full bg-gray-900 hover:bg-gray-900 text-white font-bold py-4 rounded-xl transition-colors text-lg"
+              className="w-full bg-primary hover:bg-primary text-white font-bold py-4 rounded-xl transition-colors text-lg"
             >
               Unlock Dashboard
             </button>

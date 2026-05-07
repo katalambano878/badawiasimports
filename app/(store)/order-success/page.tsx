@@ -3,13 +3,27 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+
+async function lookupOrder(orderNumber: string, token: string) {
+  const res = await fetch('/api/orders/lookup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order_number: orderNumber, token }),
+  });
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(errBody?.error || `Lookup failed (${res.status})`);
+  }
+  const json = await res.json();
+  return json.order;
+}
 
 function OrderSuccessContent() {
   const searchParams = useSearchParams();
-  const orderNumber = searchParams.get('order');
-  const paymentSuccess = searchParams.get('payment_success');
-  const paystackReference = searchParams.get('reference');
+  const orderNumber = searchParams?.get('order');
+  const lookupToken = searchParams?.get('token') || '';
+  const paymentSuccess = searchParams?.get('payment_success');
+  const paystackReference = searchParams?.get('reference');
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(true);
@@ -17,25 +31,15 @@ function OrderSuccessContent() {
 
   useEffect(() => {
     async function fetchOrder() {
-      if (!orderNumber) {
+      if (!orderNumber || !lookupToken) {
         setLoading(false);
         return;
       }
 
       try {
-        const { data: orderData, error } = await supabase
-          .from('orders')
-          .select(`
-                    *,
-                    order_items (*)
-                `)
-          .eq('order_number', orderNumber)
-          .single();
-
-        if (error) throw error;
+        const orderData = await lookupOrder(orderNumber, lookupToken);
         setOrder(orderData);
 
-        // If redirected from payment and order is still pending, try to verify
         if (paymentSuccess === 'true' && orderData && orderData.payment_status !== 'paid') {
           verifyPayment(orderNumber, orderData, paystackReference);
         }
@@ -46,25 +50,21 @@ function OrderSuccessContent() {
       }
     }
     fetchOrder();
-  }, [orderNumber, paystackReference]);
+  }, [orderNumber, lookupToken, paystackReference, paymentSuccess]);
 
-  // Payment verification - called when user is redirected from Paystack or Moolre with payment_success=true
   const verifyPayment = async (orderNum: string, initialOrder: any, reference?: string | null) => {
     setVerifying(true);
 
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    const { data: refreshed } = await supabase
-      .from('orders')
-      .select('*, order_items (*)')
-      .eq('order_number', orderNum)
-      .single();
-
-    if (refreshed?.payment_status === 'paid') {
-      setOrder(refreshed);
-      setVerifying(false);
-      return;
-    }
+    try {
+      const refreshed = await lookupOrder(orderNum, lookupToken);
+      if (refreshed?.payment_status === 'paid') {
+        setOrder(refreshed);
+        setVerifying(false);
+        return;
+      }
+    } catch {}
 
     const paymentMethod = initialOrder?.payment_method || (reference ? 'paystack' : 'moolre');
 
@@ -85,12 +85,10 @@ function OrderSuccessContent() {
       const result = await res.json();
 
       if (result.success && result.payment_status === 'paid') {
-        const { data: updated } = await supabase
-          .from('orders')
-          .select('*, order_items (*)')
-          .eq('order_number', orderNum)
-          .single();
-        if (updated) setOrder(updated);
+        try {
+          const updated = await lookupOrder(orderNum, lookupToken);
+          if (updated) setOrder(updated);
+        } catch {}
       }
     } catch (err) {
       console.error('Payment verification failed:', err);
@@ -129,6 +127,7 @@ function OrderSuccessContent() {
   const orderDate = new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const estimatedDelivery = new Date(new Date(order.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   const pointsEarned = Math.floor(order.total / 10); // Example logic: 1 point per 10 currency units
+  const isPaid = order.payment_status === 'paid';
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
@@ -158,10 +157,28 @@ function OrderSuccessContent() {
               <i className="ri-checkbox-circle-fill text-6xl text-gray-700"></i>
             </div>
 
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Order Confirmed!</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              {isPaid ? 'Order Confirmed!' : 'Order Created'}
+            </h1>
             <p className="text-xl text-gray-600 mb-8">
-              Thank you for your purchase. We're processing your order now.
+              {isPaid
+                ? "Thank you for your purchase. We're processing your order now."
+                : 'Your order is pending payment. Complete payment to confirm processing.'}
             </p>
+
+            {!isPaid && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-8 text-left">
+                <div className="flex items-start gap-3">
+                  <i className="ri-time-line text-amber-600 text-xl mt-0.5"></i>
+                  <div>
+                    <p className="font-semibold text-amber-800">Payment pending</p>
+                    <p className="text-sm text-amber-700">
+                      We have not received payment confirmation yet. You can safely retry payment below.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="bg-gray-50 rounded-xl p-6 mb-8">
               <div className="grid md:grid-cols-3 gap-6 text-center">
@@ -181,13 +198,23 @@ function OrderSuccessContent() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-              <Link
-                href={`/account?tab=orders`}
-                className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-4 rounded-lg font-semibold transition-colors inline-flex items-center justify-center whitespace-nowrap"
-              >
-                <i className="ri-file-list-3-line mr-2"></i>
-                View Order
-              </Link>
+              {isPaid ? (
+                <Link
+                  href={`/account?tab=orders`}
+                  className="bg-primary hover:bg-primary text-white px-8 py-4 rounded-lg font-semibold transition-colors inline-flex items-center justify-center whitespace-nowrap"
+                >
+                  <i className="ri-file-list-3-line mr-2"></i>
+                  View Order
+                </Link>
+              ) : (
+                <Link
+                  href={`/pay/${order.order_number}${lookupToken ? `?token=${encodeURIComponent(lookupToken)}` : ''}`}
+                  className="bg-primary hover:bg-primary text-white px-8 py-4 rounded-lg font-semibold transition-colors inline-flex items-center justify-center whitespace-nowrap"
+                >
+                  <i className="ri-secure-payment-line mr-2"></i>
+                  Complete Payment
+                </Link>
+              )}
               <Link
                 href="/shop"
                 className="border-2 border-gray-300 hover:border-gray-400 text-gray-700 px-8 py-4 rounded-lg font-semibold transition-colors inline-flex items-center justify-center whitespace-nowrap"

@@ -56,13 +56,13 @@ export default function CustomerInsightsPage() {
         const orderCount = userOrders.length;
 
         // Sort orders to find last order
-        const sortedOrders = [...userOrders].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const sortedOrders = [...userOrders].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
         const lastOrderDate = sortedOrders[0]?.created_at || profile.created_at;
 
         // Calculate Segment
         let segment = 'new';
-        const daysSinceJoin = (new Date().getTime() - new Date(profile.created_at).getTime()) / (1000 * 3600 * 24);
-        const daysSinceLastOrder = (new Date().getTime() - new Date(lastOrderDate).getTime()) / (1000 * 3600 * 24);
+        const daysSinceJoin = (new Date().getTime() - new Date(profile.created_at ?? 0).getTime()) / (1000 * 3600 * 24);
+        const daysSinceLastOrder = (new Date().getTime() - new Date(lastOrderDate ?? 0).getTime()) / (1000 * 3600 * 24);
 
         if (totalSpent > 1000) segment = 'vip'; // VIP Threshold
         else if (orderCount > 1) segment = 'returning';
@@ -172,7 +172,7 @@ export default function CustomerInsightsPage() {
             </button>
             <Link
               href="/admin"
-              className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap text-center"
+              className="bg-primary hover:bg-primary text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap text-center"
             >
               Back to Dashboard
             </Link>
@@ -215,8 +215,8 @@ export default function CustomerInsightsPage() {
 
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 flex items-center justify-center bg-purple-100 rounded-lg">
-                <i className="ri-line-chart-line text-2xl text-purple-700"></i>
+              <div className="w-12 h-12 flex items-center justify-center bg-primary-soft rounded-lg">
+                <i className="ri-line-chart-line text-2xl text-primary"></i>
               </div>
             </div>
             <p className="text-sm text-gray-600 mb-1">Avg. Lifetime Value</p>

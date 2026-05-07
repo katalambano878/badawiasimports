@@ -20,7 +20,14 @@ export default function PageHero({ title, subtitle, backgroundImage }: PageHeroP
             >
                 {backgroundImage ? (
                     <>
-                        <img src={backgroundImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                        <img
+                            src={backgroundImage}
+                            alt=""
+                            loading="eager"
+                            decoding="async"
+                            fetchPriority="high"
+                            className="absolute inset-0 w-full h-full object-cover"
+                        />
                         <div className="absolute inset-0 bg-gray-900/70" aria-hidden />
                     </>
                 ) : (

@@ -1,11 +1,14 @@
 import { Resend } from 'resend';
 import { supabase } from '@/lib/supabase';
+import { escapeHtml } from '@/lib/sanitize';
+
+const esc = (v: unknown): string => escapeHtml(v == null ? '' : String(v));
 
 const resend = new Resend(process.env.RESEND_API_KEY || 'missing_api_key');
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@example.com';
-const STORE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || 'Luxury Strand Haven';
-const EMAIL_FROM = process.env.EMAIL_FROM || `${STORE_NAME} <noreply@example.com>`;
-const SMS_SENDER_ID = process.env.SMS_SENDER_ID || 'Prishane';
+const STORE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || "BADAWIA'S IMPORTS";
+const EMAIL_FROM = process.env.EMAIL_FROM || `${STORE_NAME} <noreply@yourdomain.com>`;
+const SMS_SENDER_ID = process.env.SMS_SENDER_ID || 'BADAWIA';
 const BRAND = {
     name: STORE_NAME,
     color: '#374151',
@@ -44,7 +47,7 @@ ${body}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 <tr><td style="text-align:center;">
 <p style="margin:0 0 8px;color:#6b7280;font-size:13px;">Need help? Contact us at <a href="tel:${BRAND.phone}" style="color:${BRAND.color};text-decoration:none;">${BRAND.phone}</a></p>
-<p style="margin:0 0 12px;color:#6b7280;font-size:13px;"><a href="${BRAND.url}" style="color:${BRAND.color};text-decoration:none;">Visit our store</a> &nbsp;·&nbsp; <a href="${BRAND.url}/order-tracking" style="color:${BRAND.color};text-decoration:none;">Track order</a></p>
+<p style="margin:0 0 12px;color:#6b7280;font-size:13px;"><a href="${BRAND.url}" style="color:${BRAND.color};text-decoration:none;">Visit our store</a> &nbsp;·&nbsp; <a href="${BRAND.url}/account?tab=orders" style="color:${BRAND.color};text-decoration:none;">View orders</a></p>
 <p style="margin:0;color:#9ca3af;font-size:11px;">&copy; ${new Date().getFullYear()} ${BRAND.name}. All rights reserved.</p>
 </td></tr>
 </table>
@@ -70,6 +73,45 @@ function emailInfoRow(label: string, value: string): string {
 <td style="padding:10px 16px;color:#6b7280;font-size:13px;border-bottom:1px solid #f3f4f6;width:40%;">${label}</td>
 <td style="padding:10px 16px;color:#111827;font-size:14px;font-weight:600;border-bottom:1px solid #f3f4f6;">${value}</td>
 </tr>`;
+}
+
+/** Parse shipping_address if the client/API ever returns it as a JSON string. */
+function shippingAddressObj(order: { shipping_address?: unknown }): { phone?: string } | null {
+    const sa = order.shipping_address;
+    if (!sa) return null;
+    if (typeof sa === 'object' && sa !== null) return sa as { phone?: string };
+    if (typeof sa === 'string') {
+        try {
+            const parsed = JSON.parse(sa) as { phone?: string };
+            return typeof parsed === 'object' && parsed !== null ? parsed : null;
+        } catch {
+            return null;
+        }
+    }
+    return null;
+}
+
+/** Resolve customer phone from order row (top-level, shipping JSON, or metadata). */
+function resolveOrderPhone(order: {
+    phone?: string | null;
+    shipping_address?: unknown;
+    metadata?: { phone?: string } | null;
+}): string {
+    const fromShipping = shippingAddressObj(order)?.phone;
+    const raw =
+        (typeof order.phone === 'string' && order.phone.trim() ? order.phone : '') ||
+        (typeof fromShipping === 'string' && fromShipping.trim() ? fromShipping : '') ||
+        (typeof order.metadata?.phone === 'string' && order.metadata.phone.trim() ? order.metadata.phone : '');
+    return raw.trim();
+}
+
+function emailPhoneCell(phone: string): string {
+    if (!phone) {
+        return '<span style="color:#9ca3af;font-weight:500;">Not provided</span>';
+    }
+    const safe = phone.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const telHref = phone.replace(/[^\d+]/g, '') || phone;
+    return `<a href="tel:${telHref}" style="color:${BRAND.color};text-decoration:none;font-weight:600;">${safe}</a>`;
 }
 
 // Shipping notes block
@@ -107,28 +149,14 @@ export async function sendEmail({ to, subject, html }: { to: string; subject: st
     }
 }
 
-// Helper to format phone number for SMS (Ghana specific for now)
-// Helper to format phone number for SMS (Ghana specific for now)
+// Helper to format phone number for SMS
+// Helper to format phone number for SMS
+// Ghana (+233) E.164 phone formatting
 function formatPhoneNumber(phone: string): string {
-    // Remove all non-digit characters (including + for now)
     let cleaned = phone.replace(/\D/g, '');
-
-    // If starts with 0 (e.g. 024...), replace 0 with 233
-    if (cleaned.startsWith('0')) {
-        cleaned = '233' + cleaned.substring(1);
-    }
-
-    // If length is 9 (e.g. 24...), prepend 233
-    if (cleaned.length === 9) {
-        cleaned = '233' + cleaned;
-    }
-
-    // Ensure it starts with correct country code before prepending +
-    if (!cleaned.startsWith('233') && cleaned.length === 12) {
-        // Assuming it's some other format, but if it starts with 233, it's fine.
-    }
-
-    // Return with + prefix as per E.164
+    if (cleaned.startsWith('233') && cleaned.length >= 12) return '+' + cleaned;
+    if (cleaned.startsWith('0') && cleaned.length >= 10) cleaned = '233' + cleaned.substring(1);
+    if (cleaned.length === 9) cleaned = '233' + cleaned;
     return '+' + cleaned;
 }
 
@@ -185,7 +213,7 @@ export async function sendSMS({ to, message }: { to: string; message: string }) 
 }
 
 export async function sendOrderConfirmation(order: any) {
-    const { id, email, phone: orderPhone, shipping_address, total, created_at, order_number, metadata } = order;
+    const { id, email, shipping_address, total, created_at, order_number, metadata } = order;
 
     const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
 
@@ -208,12 +236,12 @@ export async function sendOrderConfirmation(order: any) {
     };
     const name = getName();
 
-    // Prefer top-level phone, then shipping address phone
-    const phone = orderPhone || shipping_address?.phone;
+    const phone = resolveOrderPhone(order);
 
-    // Get tracking number from metadata
     const trackingNumber = metadata?.tracking_number || '';
-    const trackingUrl = `${baseUrl}/order-tracking?order=${order_number || id}`;
+    const lookupToken: string | undefined = metadata?.lookup_token;
+    const tokenSuffix = lookupToken ? `&token=${encodeURIComponent(lookupToken)}` : '';
+    const trackingUrl = `${baseUrl}/order-success?order=${order_number || id}${tokenSuffix}`;
 
     console.log(`[Notification] Preparing for Order #${order_number} | Phone: ${phone ? 'Present' : 'Missing'} | Tracking: ${trackingNumber || 'None'}`);
 
@@ -251,6 +279,7 @@ export async function sendOrderConfirmation(order: any) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:12px;overflow:hidden;margin:20px 0;">
   ${emailInfoRow('Order Number', `#${order_number || id}`)}
   ${emailInfoRow('Order Date', new Date(created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }))}
+  ${emailInfoRow('Contact phone', emailPhoneCell(phone))}
   ${trackingNumber ? emailInfoRow('Tracking', trackingNumber) : ''}
   ${emailInfoRow('Total', `GH₵${Number(total).toFixed(2)}`)}
 </table>
@@ -270,22 +299,25 @@ ${emailButton('Track Your Order', trackingUrl)}
         html: customerEmailHtml
     });
 
-    // 2. Email to Admin
+    // 2. Email to Admin (escape customer-controlled fields to prevent injection in admin inbox)
+    const safeName = esc(name);
+    const safeEmail = esc(email);
     const adminEmailHtml = emailLayout(`
 <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">&#128230; New Order Received</h2>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:12px;overflow:hidden;margin:16px 0;">
   ${emailInfoRow('Order', `#${order_number || id}`)}
-  ${emailInfoRow('Customer', `${name}`)}
-  ${emailInfoRow('Email', email)}
+  ${emailInfoRow('Customer', safeName)}
+  ${emailInfoRow('Email', safeEmail)}
+  ${emailInfoRow('Phone', emailPhoneCell(phone))}
   ${emailInfoRow('Total', `GH₵${Number(total).toFixed(2)}`)}
-  ${trackingNumber ? emailInfoRow('Tracking', trackingNumber) : ''}
+  ${trackingNumber ? emailInfoRow('Tracking', esc(trackingNumber)) : ''}
 </table>
 
 ${emailShippingNotes(shippingNotes)}
 
 ${emailButton('View Order in Admin', `${baseUrl}/admin/orders/${id}`)}
-`, `New order #${order_number} from ${name}`);
+`, `New order #${order_number} from ${safeName}`);
 
     await sendEmail({
         to: ADMIN_EMAIL,
@@ -307,7 +339,7 @@ ${emailButton('View Order in Admin', `${baseUrl}/admin/orders/${id}`)}
 }
 
 export async function sendOrderStatusUpdate(order: any, newStatus: string) {
-    const { id, email, phone: orderPhone, shipping_address, order_number, metadata } = order;
+    const { id, email, shipping_address, order_number, metadata } = order;
 
     const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
 
@@ -327,9 +359,11 @@ export async function sendOrderStatusUpdate(order: any, newStatus: string) {
         return 'Customer';
     };
     const name = getName();
-    const phone = orderPhone || shipping_address?.phone;
+    const phone = resolveOrderPhone(order);
     const trackingNumber = metadata?.tracking_number || '';
-    const trackingUrl = `${baseUrl}/order-tracking?order=${order_number || id}`;
+    const lookupToken: string | undefined = metadata?.lookup_token;
+    const tokenSuffix = lookupToken ? `&token=${encodeURIComponent(lookupToken)}` : '';
+    const trackingUrl = `${baseUrl}/order-success?order=${order_number || id}${tokenSuffix}`;
 
     console.log(`[Notification] Status update for Order #${order_number} to ${newStatus} | Tracking: ${trackingNumber}`);
 
@@ -445,10 +479,14 @@ ${emailButton('Start Shopping', `${BRAND.url}/shop`)}
 }
 
 export async function sendPaymentLink(order: any) {
-    const { id, email, phone: orderPhone, shipping_address, total, order_number, metadata } = order;
+    const { id, email, shipping_address, total, order_number, metadata } = order;
 
     const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
-    const paymentUrl = `${baseUrl}/pay/${id}`;
+    // Without the lookup_token suffix the storefront pay page can't read the order at all
+    // (RLS blocks anon reads of guest orders). The token must be present on the URL.
+    const lookupToken: string | undefined = metadata?.lookup_token;
+    const tokenSuffix = lookupToken ? `?token=${encodeURIComponent(lookupToken)}` : '';
+    const paymentUrl = `${baseUrl}/pay/${id}${tokenSuffix}`;
 
     // Build customer name from available sources
     const getName = () => {
@@ -466,7 +504,7 @@ export async function sendPaymentLink(order: any) {
         return 'Customer';
     };
     const name = getName();
-    const phone = orderPhone || shipping_address?.phone;
+    const phone = resolveOrderPhone(order);
 
     console.log(`[Notification] Sending payment link for Order #${order_number} | Phone: ${phone ? 'Present' : 'Missing'}`);
 
@@ -508,10 +546,12 @@ ${emailButton('Pay Now — GH₵' + Number(total).toFixed(2), paymentUrl, '#d977
 export async function sendContactMessage(data: { name: string, email: string, subject: string, message: string }) {
     const { name, email, subject, message } = data;
 
-    // 1. Acknowledge to User
+    const ackName = esc(name);
+    const ackSubject = esc(subject);
+    const ackMessage = esc(message).replace(/\n/g, '<br>');
     await sendEmail({
         to: email,
-        subject: `We received your message: ${subject}`,
+        subject: `We received your message: ${ackSubject}`,
         html: emailLayout(`
 <div style="text-align:center;margin-bottom:24px;">
   <div style="width:64px;height:64px;background-color:${BRAND.colorLight};border-radius:50%;margin:0 auto 16px;line-height:64px;font-size:28px;">&#128172;</div>
@@ -519,37 +559,41 @@ export async function sendContactMessage(data: { name: string, email: string, su
   <p style="margin:0;color:#6b7280;font-size:14px;">We'll get back to you soon.</p>
 </div>
 
-<p style="color:#374151;font-size:14px;line-height:1.7;margin:16px 0;">Hi ${name},</p>
-<p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 16px;">Thank you for reaching out to ${BRAND.name}. We've received your message regarding <strong>"${subject}"</strong> and our team will respond as soon as possible.</p>
+<p style="color:#374151;font-size:14px;line-height:1.7;margin:16px 0;">Hi ${ackName},</p>
+<p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 16px;">Thank you for reaching out to ${BRAND.name}. We've received your message regarding <strong>"${ackSubject}"</strong> and our team will respond as soon as possible.</p>
 
 <div style="background-color:#f9fafb;border-left:4px solid ${BRAND.color};border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;">
   <p style="color:#6b7280;font-size:12px;margin:0 0 6px;text-transform:uppercase;letter-spacing:0.5px;">Your message</p>
-  <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">${message}</p>
+  <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">${ackMessage}</p>
 </div>
 
 <p style="color:#6b7280;font-size:13px;margin:16px 0 0;">We typically respond within 24 hours.</p>
-`, `Thanks for contacting us, ${name}`)
+`, `Thanks for contacting us, ${ackName}`)
     });
 
-    // 2. Alert Admin
+    // 2. Alert Admin (escape every user-supplied field so the contact form can't inject HTML/links into the admin's inbox)
+    const sName = esc(name);
+    const sEmail = esc(email);
+    const sSubject = esc(subject);
+    const sMessage = esc(message).replace(/\n/g, '<br>');
     await sendEmail({
         to: ADMIN_EMAIL,
-        subject: `Contact: ${subject}`,
+        subject: `Contact: ${sSubject}`,
         html: emailLayout(`
 <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">&#128233; New Contact Message</h2>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:12px;overflow:hidden;margin:16px 0;">
-  ${emailInfoRow('From', name)}
-  ${emailInfoRow('Email', `<a href="mailto:${email}" style="color:${BRAND.color};">${email}</a>`)}
-  ${emailInfoRow('Subject', subject)}
+  ${emailInfoRow('From', sName)}
+  ${emailInfoRow('Email', `<a href="mailto:${sEmail}" style="color:${BRAND.color};">${sEmail}</a>`)}
+  ${emailInfoRow('Subject', sSubject)}
 </table>
 
 <div style="background-color:#f9fafb;border-left:4px solid ${BRAND.color};border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;">
   <p style="color:#6b7280;font-size:12px;margin:0 0 6px;text-transform:uppercase;letter-spacing:0.5px;">Message</p>
-  <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">${message}</p>
+  <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">${sMessage}</p>
 </div>
 
-${emailButton('Reply to ' + name, `mailto:${email}?subject=Re: ${encodeURIComponent(subject)}`)}
-`, `New contact from ${name}: ${subject}`)
+${emailButton('Reply to ' + sName, `mailto:${sEmail}?subject=Re: ${encodeURIComponent(subject)}`)}
+`, `New contact from ${sName}: ${sSubject}`)
     });
 }

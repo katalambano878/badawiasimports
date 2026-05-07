@@ -20,7 +20,7 @@ export async function testSmsAction(phone: string, message: string) {
             };
         }
 
-        // Format phone number for Ghana
+        // Format phone number (add country code if local format)
         let cleaned = phone.replace(/\D/g, '');
         if (cleaned.startsWith('0')) {
             cleaned = '233' + cleaned.slice(1);
@@ -39,7 +39,7 @@ export async function testSmsAction(phone: string, message: string) {
             },
             body: JSON.stringify({
                 type: 1,
-                senderid: process.env.SMS_SENDER_ID || 'Prishane',
+                senderid: process.env.SMS_SENDER_ID || 'STORE',
                 messages: [
                     {
                         recipient: recipient,

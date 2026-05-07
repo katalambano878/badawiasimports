@@ -33,29 +33,29 @@ export default function CheckoutPage() {
     region: ''
   });
 
-  // Ghana Regions for dropdown
-  const ghanaRegions = [
-    'Greater Accra',
-    'Ashanti',
-    'Western',
-    'Central',
-    'Eastern',
-    'Northern',
-    'Volta',
-    'Upper East',
-    'Upper West',
-    'Brong-Ahafo',
+  // Regions for dropdown — customize for your delivery areas
+  // Ghana's 16 administrative regions
+  const regions = [
     'Ahafo',
+    'Ashanti',
     'Bono',
     'Bono East',
+    'Central',
+    'Eastern',
+    'Greater Accra',
     'North East',
-    'Savannah',
+    'Northern',
     'Oti',
-    'Western North'
+    'Savannah',
+    'Upper East',
+    'Upper West',
+    'Volta',
+    'Western',
+    'Western North',
   ];
 
   const [deliveryMethod, setDeliveryMethod] = useState('pickup');
-  const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'moolre' | 'stripe' | 'paypal'>('paystack');
+  const [paymentMethod] = useState<'moolre'>('moolre');
   const [errors, setErrors] = useState<any>({});
 
 
@@ -138,140 +138,105 @@ export default function CheckoutPage() {
     }
 
     try {
-      const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      // Generate tracking number: SLI-XXXXXX (6-char alphanumeric)
-      const trackingId = Array.from({ length: 6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
-      const trackingNumber = `SLI-${trackingId}`;
-
-      // 1. Create Order
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert([{
-          order_number: orderNumber,
-          user_id: user?.id || null, // Capture user_id if logged in
-          email: shippingData.email,
-          phone: shippingData.phone,
-          status: 'pending',
-          payment_status: 'pending',
-          currency: 'GHS',
-          subtotal: subtotal,
-          tax_total: tax,
-          shipping_total: shippingCost,
-          discount_total: 0,
-          total: total,
-          shipping_method: deliveryMethod,
-          payment_method: paymentMethod,
-          shipping_address: shippingData,
-          billing_address: shippingData, // Using same for now
-          metadata: {
-            guest_checkout: !user,
-            first_name: shippingData.firstName,
-            last_name: shippingData.lastName,
-            tracking_number: trackingNumber,
-            payment_method: paymentMethod
-          }
-        }])
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // 2. Create Order Items (with UUID validation)
-      // Helper to check if string is a valid UUID
-      const isValidUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-      
-      // Build order items, resolving slugs to UUIDs if needed
-      const orderItems = [];
-      
-      // Batch-fetch product metadata (for preorder_shipping etc.)
-      const productIds = cart.map(item => item.id).filter(id => isValidUUID(id));
-      const { data: productsData } = productIds.length > 0
-        ? await supabase.from('products').select('id, metadata').in('id', productIds)
-        : { data: [] };
-      const productMetaMap = new Map((productsData || []).map((p: any) => [p.id, p.metadata]));
-      
-      for (const item of cart) {
-        let productId = item.id;
-        
-        // If id is not a valid UUID, it might be a slug - try to resolve it
-        if (!isValidUUID(productId)) {
-          const { data: product } = await supabase
-            .from('products')
-            .select('id, metadata')
-            .or(`slug.eq.${productId},id.eq.${productId}`)
-            .single();
-          
-          if (product) {
-            productId = product.id;
-            productMetaMap.set(product.id, product.metadata);
-          } else {
-            throw new Error(`Product not found: ${item.name}. Please remove it from your cart and try again.`);
-          }
+      // Pull the live session right before placing the order so a stale React
+      // user state never causes a server-side mismatch.
+      let activeUserId: string | null = null;
+      try {
+        const { data: { session: liveSession } } = await supabase.auth.getSession();
+        if (liveSession?.user?.id) {
+          activeUserId = liveSession.user.id;
         }
-        
-        const prodMeta = productMetaMap.get(productId);
-        
-        orderItems.push({
-          order_id: order.id,
-          product_id: productId,
-          product_name: item.name,
-          variant_name: item.variant,
-          quantity: item.quantity,
-          unit_price: item.price,
-          total_price: item.price * item.quantity,
-          metadata: {
-            image: item.image,
-            slug: item.slug,
-            preorder_shipping: prodMeta?.preorder_shipping || null
-          }
-        });
+      } catch {
+        activeUserId = null;
       }
 
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
-
-      // Note: Stock reduction happens in mark_order_paid when payment is confirmed
-
-      // 3. Upsert Customer Record (for both guest and registered users)
-      const fullName = `${shippingData.firstName} ${shippingData.lastName}`.trim();
-      await supabase.rpc('upsert_customer_from_order', {
-        p_email: shippingData.email,
-        p_phone: shippingData.phone,
-        p_full_name: fullName,
-        p_first_name: shippingData.firstName,
-        p_last_name: shippingData.lastName,
-        p_user_id: user?.id || null,
-        p_address: shippingData
+      // Create the order on the server. The endpoint validates prices, builds
+      // the order + order_items with the service role, and returns the
+      // identifiers we need to drive the rest of the flow. This avoids the
+      // RLS-on-anon-key fragility we kept hitting from the browser.
+      const createRes = await fetch('/api/orders/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cart: cart.map(item => ({
+            id: item.id,
+            name: item.name,
+            variant: item.variant,
+            quantity: item.quantity,
+            price: item.price,
+            image: item.image,
+            slug: item.slug,
+          })),
+          shipping: shippingData,
+          delivery_method: deliveryMethod,
+          payment_method: paymentMethod,
+          user_id: activeUserId,
+        }),
       });
 
-      // 4. Handle Payment Redirects or Completion
-      if (paymentMethod === 'paystack') {
-        try {
-          const paymentRes = await fetch('/api/payment/paystack', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: orderNumber,
-              amount: total,
-              customerEmail: shippingData.email,
-            }),
-          });
-          const paymentResult = await paymentRes.json();
-          if (!paymentResult.success) {
-            throw new Error(paymentResult.message || 'Payment initialization failed');
-          }
-          clearCart();
-          window.location.href = paymentResult.url;
-          return;
-        } catch (paymentErr: any) {
-          console.error('Payment Error:', paymentErr);
-          alert('Failed to initialize payment: ' + paymentErr.message);
-          setIsLoading(false);
-          return;
-        }
+      let createPayload: {
+        success?: boolean;
+        error?: string;
+        order?: {
+          id: string;
+          order_number: string;
+          tracking_number: string;
+          lookup_token: string;
+          subtotal: number;
+          tax_total: number;
+          shipping_total: number;
+          discount_total: number;
+          total: number;
+        };
+      };
+      try {
+        createPayload = await createRes.json();
+      } catch {
+        throw new Error(createRes.ok ? 'Invalid response from server.' : `Server error (${createRes.status}). Please try again.`);
+      }
+      if (!createRes.ok || !createPayload.success || !createPayload.order) {
+        throw new Error(createPayload?.error || 'Could not place order. Please try again.');
+      }
+
+      const order = {
+        id: createPayload.order.id,
+        order_number: createPayload.order.order_number,
+        total: createPayload.order.total,
+        currency: 'GHS',
+        email: shippingData.email,
+        phone: shippingData.phone,
+        shipping_address: shippingData,
+        metadata: {
+          first_name: shippingData.firstName,
+          last_name: shippingData.lastName,
+          tracking_number: createPayload.order.tracking_number,
+          payment_method: paymentMethod,
+          lookup_token: createPayload.order.lookup_token,
+        },
+      };
+      const orderNumber = order.order_number;
+      const lookupToken = createPayload.order.lookup_token;
+
+      // Upsert the customer record. Non-blocking on purpose — a failure here
+      // must never stop the customer from reaching the payment gateway.
+      const fullName = `${shippingData.firstName} ${shippingData.lastName}`.trim();
+      try {
+        await fetch('/api/customers/upsert-from-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: shippingData.email,
+            phone: shippingData.phone,
+            full_name: fullName,
+            first_name: shippingData.firstName,
+            last_name: shippingData.lastName,
+            user_id: activeUserId,
+            address: shippingData,
+            order_number: orderNumber,
+          }),
+        });
+      } catch (custErr) {
+        console.error('Customer upsert failed (non-fatal):', custErr);
       }
 
       if (paymentMethod === 'moolre') {
@@ -281,78 +246,32 @@ export default function CheckoutPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               orderId: orderNumber,
-              amount: total,
               customerEmail: shippingData.email,
             }),
           });
-          const paymentResult = await paymentRes.json();
+          let paymentResult: { success?: boolean; message?: string; url?: string };
+          try {
+            paymentResult = await paymentRes.json();
+          } catch {
+            throw new Error(paymentRes.ok ? 'Invalid response from payment server.' : `Payment error (${paymentRes.status}). Please try again or contact support.`);
+          }
           if (!paymentResult.success) {
             throw new Error(paymentResult.message || 'Payment initialization failed');
+          }
+          if (!paymentResult.url) {
+            throw new Error('No payment link received. Please try again or contact support.');
           }
           clearCart();
           window.location.href = paymentResult.url;
           return;
         } catch (paymentErr: any) {
           console.error('Payment Error:', paymentErr);
-          alert('Failed to initialize payment: ' + paymentErr.message);
+          alert('Failed to initialize payment: ' + (paymentErr?.message || 'Please try again or contact support.'));
           setIsLoading(false);
           return;
         }
       }
 
-      if (paymentMethod === 'stripe') {
-        try {
-          const paymentRes = await fetch('/api/payment/stripe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: orderNumber,
-              amount: total,
-              customerEmail: shippingData.email,
-            }),
-          });
-          const paymentResult = await paymentRes.json();
-          if (!paymentResult.success) {
-            throw new Error(paymentResult.message || 'Payment initialization failed');
-          }
-          clearCart();
-          window.location.href = paymentResult.url;
-          return;
-        } catch (paymentErr: any) {
-          console.error('Payment Error:', paymentErr);
-          alert('Failed to initialize payment: ' + paymentErr.message);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      if (paymentMethod === 'paypal') {
-        try {
-          const paymentRes = await fetch('/api/payment/paypal', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: orderNumber,
-              amount: total,
-              customerEmail: shippingData.email,
-            }),
-          });
-          const paymentResult = await paymentRes.json();
-          if (!paymentResult.success) {
-            throw new Error(paymentResult.message || 'Payment initialization failed');
-          }
-          clearCart();
-          window.location.href = paymentResult.url;
-          return;
-        } catch (paymentErr: any) {
-          console.error('Payment Error:', paymentErr);
-          alert('Failed to initialize payment: ' + paymentErr.message);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // 5. Send Notifications (For COD or others)
       fetch('/api/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -362,13 +281,12 @@ export default function CheckoutPage() {
         })
       }).catch(err => console.error('Notification trigger error:', err));
 
-      // 6. Clear Cart & Redirect (For COD)
       clearCart();
-      router.push(`/order-success?order=${orderNumber}`);
+      router.push(`/order-success?order=${orderNumber}&token=${lookupToken}`);
 
     } catch (err: any) {
       console.error('Checkout error:', err);
-      alert('Failed to place order: ' + err.message);
+      alert('Failed to place order: ' + (err?.message || 'Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -383,7 +301,7 @@ export default function CheckoutPage() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h1>
           <p className="text-gray-600 mb-8">Add some items to start the checkout process.</p>
-          <Link href="/shop" className="inline-block bg-gray-900 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors">
+          <Link href="/shop" className="inline-block bg-primary text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary transition-colors">
             Return to Shop
           </Link>
         </div>
@@ -417,7 +335,7 @@ export default function CheckoutPage() {
               >
                 <div className="flex items-center justify-between mb-3">
                   <i className="ri-user-line text-3xl text-gray-900"></i>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${checkoutType === 'guest' ? 'border-gray-900 bg-gray-900' : 'border-gray-300'
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${checkoutType === 'guest' ? 'border-gray-900 bg-primary' : 'border-gray-300'
                     }`}>
                     {checkoutType === 'guest' && <i className="ri-check-line text-white text-sm"></i>}
                   </div>
@@ -436,7 +354,7 @@ export default function CheckoutPage() {
               >
                 <div className="flex items-center justify-between mb-3">
                   <i className="ri-account-circle-line text-3xl text-gray-900"></i>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${checkoutType === 'account' ? 'border-gray-900 bg-gray-900' : 'border-gray-300'
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${checkoutType === 'account' ? 'border-gray-900 bg-primary' : 'border-gray-300'
                     }`}>
                     {checkoutType === 'account' && <i className="ri-check-line text-white text-sm"></i>}
                   </div>
@@ -517,7 +435,7 @@ export default function CheckoutPage() {
                         onChange={(e) => setShippingData({ ...shippingData, phone: e.target.value })}
                         className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-gray-600 focus:border-gray-600 ${errors.phone ? 'border-red-500' : 'border-gray-300'
                           }`}
-                        placeholder="+233 XX XXX XXXX"
+                        placeholder="e.g. 0539 781 532"
                       />
                       {errors.phone && <p className="text-sm text-red-600 mt-1">{errors.phone}</p>}
                     </div>
@@ -548,7 +466,7 @@ export default function CheckoutPage() {
                           onChange={(e) => setShippingData({ ...shippingData, city: e.target.value })}
                           className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-gray-600 focus:border-gray-600 ${errors.city ? 'border-red-500' : 'border-gray-300'
                             }`}
-                          placeholder="Accra"
+                          placeholder="Your city"
                         />
                         {errors.city && <p className="text-sm text-red-600 mt-1">{errors.city}</p>}
                       </div>
@@ -563,7 +481,7 @@ export default function CheckoutPage() {
                             }`}
                         >
                           <option value="">Select Region</option>
-                          {ghanaRegions.map((region) => (
+                          {regions.map((region) => (
                             <option key={region} value={region}>{region}</option>
                           ))}
                         </select>
@@ -586,7 +504,7 @@ export default function CheckoutPage() {
 
                   <button
                     onClick={handleContinueToDelivery}
-                    className="w-full mt-6 bg-gray-900 hover:bg-gray-800 text-white py-4 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer"
+                    className="w-full mt-6 bg-primary hover:bg-primary text-white py-4 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer"
                   >
                     Continue to Delivery
                   </button>
@@ -645,8 +563,8 @@ export default function CheckoutPage() {
                       <div className="flex items-center space-x-4">
                         <input type="radio" name="delivery" value="accra" checked={deliveryMethod === 'accra'} onChange={(e) => setDeliveryMethod(e.target.value)} className="w-5 h-5 text-gray-900" />
                         <div>
-                          <p className="font-semibold text-gray-900">Accra Delivery</p>
-                          <p className="text-sm text-gray-600">Delivery within Accra</p>
+                          <p className="font-semibold text-gray-900">Local Delivery</p>
+                          <p className="text-sm text-gray-600">Delivery within local area</p>
                         </div>
                       </div>
                       <p className="font-bold text-gray-900">GH₵ 40.00</p>
@@ -656,8 +574,8 @@ export default function CheckoutPage() {
                       <div className="flex items-center space-x-4">
                         <input type="radio" name="delivery" value="outside-accra" checked={deliveryMethod === 'outside-accra'} onChange={(e) => setDeliveryMethod(e.target.value)} className="w-5 h-5 text-gray-900" />
                         <div>
-                          <p className="font-semibold text-gray-900">Outside Accra Delivery</p>
-                          <p className="text-sm text-gray-600">Delivery to bus stations (VIP, OA, STC, etc.)</p>
+                          <p className="font-semibold text-gray-900">Regional Delivery</p>
+                          <p className="text-sm text-gray-600">Delivery to regional pickup points</p>
                         </div>
                       </div>
                       <p className="font-bold text-gray-900">GH₵ 30.00</p>
@@ -666,76 +584,13 @@ export default function CheckoutPage() {
                   </div>
 
                   <h2 className="text-xl font-bold text-gray-900 mt-8 mb-4">Payment Method</h2>
-                  <p className="text-sm text-gray-600 mb-4">Select how you’d like to pay. Paystack, Moolre, Stripe, or PayPal — choose one.</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label
-                      className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors ${paymentMethod === 'paystack' ? 'border-gray-900 bg-gray-50' : 'border-gray-300 hover:border-gray-400'}`}
-                    >
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="paystack"
-                        checked={paymentMethod === 'paystack'}
-                        onChange={() => setPaymentMethod('paystack')}
-                        className="w-5 h-5 text-gray-900 flex-shrink-0"
-                      />
-                      <i className="ri-bank-card-line text-xl text-gray-600 flex-shrink-0"></i>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-gray-900">Paystack</p>
-                        <p className="text-xs text-gray-600 truncate">Card & Mobile Money</p>
-                      </div>
-                    </label>
-                    <label
-                      className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors ${paymentMethod === 'moolre' ? 'border-gray-900 bg-gray-50' : 'border-gray-300 hover:border-gray-400'}`}
-                    >
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="moolre"
-                        checked={paymentMethod === 'moolre'}
-                        onChange={() => setPaymentMethod('moolre')}
-                        className="w-5 h-5 text-gray-900 flex-shrink-0"
-                      />
-                      <i className="ri-smartphone-line text-xl text-gray-600 flex-shrink-0"></i>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-gray-900">Moolre</p>
-                        <p className="text-xs text-gray-600 truncate">Mobile Money</p>
-                      </div>
-                    </label>
-                    <label
-                      className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors ${paymentMethod === 'stripe' ? 'border-gray-900 bg-gray-50' : 'border-gray-300 hover:border-gray-400'}`}
-                    >
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="stripe"
-                        checked={paymentMethod === 'stripe'}
-                        onChange={() => setPaymentMethod('stripe')}
-                        className="w-5 h-5 text-gray-900 flex-shrink-0"
-                      />
-                      <i className="ri-bank-card-2-line text-xl text-gray-600 flex-shrink-0"></i>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-gray-900">Stripe</p>
-                        <p className="text-xs text-gray-600 truncate">Card (Visa, Mastercard)</p>
-                      </div>
-                    </label>
-                    <label
-                      className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors ${paymentMethod === 'paypal' ? 'border-gray-900 bg-gray-50' : 'border-gray-300 hover:border-gray-400'}`}
-                    >
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="paypal"
-                        checked={paymentMethod === 'paypal'}
-                        onChange={() => setPaymentMethod('paypal')}
-                        className="w-5 h-5 text-gray-900 flex-shrink-0"
-                      />
-                      <i className="ri-paypal-line text-xl text-gray-600 flex-shrink-0"></i>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-gray-900">PayPal</p>
-                        <p className="text-xs text-gray-600 truncate">PayPal balance</p>
-                      </div>
-                    </label>
+                  <p className="text-sm text-gray-600 mb-4">Select how you’d like to pay. Pay with Mobile Money (MTN, Vodafone, AirtelTigo).</p>
+                  <div className="flex items-center gap-3 p-4 border-2 border-gray-900 bg-gray-50 rounded-xl">
+                    <i className="ri-smartphone-line text-xl text-gray-600 flex-shrink-0"></i>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900">Mobile Money</p>
+                      <p className="text-xs text-gray-600 truncate">MTN, Vodafone, AirtelTigo</p>
+                    </div>
                   </div>
 
                   <div className="flex flex-col-reverse md:flex-row gap-4 mt-6">
@@ -749,7 +604,7 @@ export default function CheckoutPage() {
                     <button
                       onClick={handleContinueToPayment}
                       disabled={isLoading}
-                      className="flex-1 bg-gray-900 hover:bg-gray-800 text-white py-4 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer disabled:opacity-70 flex items-center justify-center"
+                      className="flex-1 bg-primary hover:bg-primary text-white py-4 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer disabled:opacity-70 flex items-center justify-center"
                     >
                       {isLoading ? (
                         <>
@@ -760,7 +615,7 @@ export default function CheckoutPage() {
                           Processing...
                         </>
                       ) : (
-                        paymentMethod === 'paystack' ? 'Pay with Paystack' : paymentMethod === 'moolre' ? 'Pay with Moolre' : paymentMethod === 'stripe' ? 'Pay with Stripe' : 'Pay with PayPal'
+                        'Pay with Mobile Money'
                       )}
                     </button>
                   </div>

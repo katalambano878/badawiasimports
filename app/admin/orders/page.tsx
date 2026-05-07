@@ -7,24 +7,24 @@ import ProductSalesStats from './ProductSalesStats';
 
 interface Order {
   id: string;
-  order_number: string;
-  email: string;
+  order_number: string | null;
+  email: string | null;
   total: number;
-  status: string;
-  payment_status: string;
-  payment_method: string;
-  shipping_method: string;
-  created_at: string;
-  phone?: string;
+  status: string | null;
+  payment_status: string | null;
+  payment_method: string | null;
+  shipping_method: string | null;
+  created_at: string | null;
+  phone?: string | null;
   shipping_address?: any;
   metadata?: any;
   profiles?: {
-    full_name: string;
-    email: string;
-  };
+    full_name: string | null;
+    email: string | null;
+  } | null;
   order_items?: {
     quantity: number;
-    product_name?: string;
+    product_name?: string | null;
   }[];
 }
 
@@ -44,6 +44,7 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [orderViewTab, setOrderViewTab] = useState<'confirmed' | 'abandoned'>('confirmed');
   const [sendingPaymentLink, setSendingPaymentLink] = useState<string | null>(null);
+  const [markingPaid, setMarkingPaid] = useState<string | null>(null);
   const [orderStats, setOrderStats] = useState<OrderStats[]>([
     { label: 'All Orders', count: 0, status: 'all' },
     { label: 'Pending', count: 0, status: 'pending' },
@@ -130,7 +131,7 @@ export default function AdminOrdersPage() {
   const statusColors: Record<string, string> = {
     'pending': 'bg-amber-100 text-amber-700 border-amber-200',
     'processing': 'bg-blue-100 text-blue-700 border-blue-200',
-    'shipped': 'bg-purple-100 text-purple-700 border-purple-200',
+    'shipped': 'bg-primary-soft text-primary border-primary/20',
     'delivered': 'bg-gray-100 text-gray-900 border-gray-200',
     'cancelled': 'bg-red-100 text-red-700 border-red-200',
     'awaiting_payment': 'bg-gray-100 text-gray-700 border-gray-200'
@@ -214,7 +215,7 @@ export default function AdminOrdersPage() {
       try {
         const { error } = await supabase
           .from('orders')
-          .update({ status: newStatus })
+          .update({ status: newStatus as any })
           .in('id', selectedOrders);
 
         if (error) throw error;
@@ -283,6 +284,39 @@ export default function AdminOrdersPage() {
     window.open(`/admin/orders/${orderId}?print=true`, '_blank');
   };
 
+  const handleMarkAsPaid = async (order: Order) => {
+    const ref = order.order_number || order.id;
+    const ok = window.confirm(
+      `Mark order ${ref} as PAID?\n\n` +
+      `Customer: ${getCustomerName(order)}\n` +
+      `Total: GH₵ ${(order.total ?? 0).toFixed(2)}\n\n` +
+      `Only do this if you've already confirmed payment in your Moolre dashboard or received funds another way.`
+    );
+    if (!ok) return;
+    setMarkingPaid(order.id);
+    try {
+      const res = await fetch('/api/admin/orders/mark-paid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_ref: order.order_number || order.id,
+          moolre_ref: `MANUAL-${new Date().toISOString().slice(0, 10)}`,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to mark order as paid');
+      }
+      alert(`Order ${ref} marked as paid.`);
+      await fetchOrders();
+    } catch (err: any) {
+      console.error('mark-paid failed:', err);
+      alert('Could not mark as paid: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setMarkingPaid(null);
+    }
+  };
+
   const handleResendPaymentLink = async (order: Order) => {
     setSendingPaymentLink(order.id);
     try {
@@ -341,7 +375,7 @@ export default function AdminOrdersPage() {
           </button>
           <button
             onClick={handleExportAll}
-            className="flex-1 md:flex-none bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer shadow-sm flex items-center justify-center"
+            className="flex-1 md:flex-none bg-primary hover:bg-primary text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer shadow-sm flex items-center justify-center"
           >
             <i className="ri-download-line mr-2"></i>
             Export
@@ -497,13 +531,13 @@ export default function AdminOrdersPage() {
               </button>
               <button
                 onClick={() => handleBulkAction('Mark as Packaged', 'shipped')}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer"
+                className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer"
               >
                 Mark Packaged
               </button>
               <button
                 onClick={() => handleBulkAction('Export')}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer"
+                className="px-4 py-2 bg-gray-700 hover:bg-primary text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer"
               >
                 <i className="ri-download-line mr-2"></i>
                 Export
@@ -605,18 +639,32 @@ export default function AdminOrdersPage() {
                           <i className="ri-eye-line text-lg w-4 h-4 flex items-center justify-center"></i>
                         </Link>
                         {orderViewTab === 'abandoned' && order.payment_status !== 'paid' && (
-                          <button
-                            onClick={() => handleResendPaymentLink(order)}
-                            disabled={sendingPaymentLink === order.id}
-                            className="w-8 h-8 flex items-center justify-center text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                            title="Resend Payment Link"
-                          >
-                            {sendingPaymentLink === order.id ? (
-                              <i className="ri-loader-4-line text-lg w-4 h-4 flex items-center justify-center animate-spin"></i>
-                            ) : (
-                              <i className="ri-send-plane-line text-lg w-4 h-4 flex items-center justify-center"></i>
-                            )}
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleMarkAsPaid(order)}
+                              disabled={markingPaid === order.id}
+                              className="w-8 h-8 flex items-center justify-center text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                              title="Mark as Paid"
+                            >
+                              {markingPaid === order.id ? (
+                                <i className="ri-loader-4-line text-lg w-4 h-4 flex items-center justify-center animate-spin"></i>
+                              ) : (
+                                <i className="ri-checkbox-circle-line text-lg w-4 h-4 flex items-center justify-center"></i>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleResendPaymentLink(order)}
+                              disabled={sendingPaymentLink === order.id}
+                              className="w-8 h-8 flex items-center justify-center text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                              title="Resend Payment Link"
+                            >
+                              {sendingPaymentLink === order.id ? (
+                                <i className="ri-loader-4-line text-lg w-4 h-4 flex items-center justify-center animate-spin"></i>
+                              ) : (
+                                <i className="ri-send-plane-line text-lg w-4 h-4 flex items-center justify-center"></i>
+                              )}
+                            </button>
+                          </>
                         )}
                         <button
                           onClick={() => handlePrintInvoice(order.id)}

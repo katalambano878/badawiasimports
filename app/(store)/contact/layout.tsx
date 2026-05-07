@@ -1,24 +1,21 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Contact Us — Luxury Strand Haven Ghana',
-  description: 'Get in touch with Luxury Strand Haven. Contact us for custom wig orders, wholesale enquiries, hair consultations or any questions about our premium hair collection. Fast response guaranteed.',
-  keywords: [
-    'contact Luxury Strand Haven', 'custom wig order Ghana', 'hair consultation Ghana',
-    'wig shop contact Ghana', 'wholesale hair Ghana', 'hair enquiry Ghana', 'order wigs Ghana',
-  ].join(', '),
+  title: 'Contact Us',
+  description: "Get in touch with BADAWIA'S IMPORTS. Call or WhatsApp 0539781532, visit our showrooms in Tamale & Accra, or send us a message. We're here to help with orders, wholesale inquiries, and support.",
+  keywords: ['contact Badawia Imports', 'customer service Ghana', 'Tamale showroom', 'Accra showroom', 'WhatsApp Ghana store', 'wholesale inquiries', 'phone 0539781532'],
   openGraph: {
-    title: 'Contact Luxury Strand Haven | Premium Hair Ghana',
-    description: 'Contact us for custom wig orders, wholesale enquiries and hair consultations.',
-    images: [{ url: '/og-home.png', width: 1200, height: 630, alt: 'Contact Luxury Strand Haven Ghana', type: 'image/png' }],
+    title: "Contact Us | BADAWIA'S IMPORTS",
+    description: "Reach BADAWIA'S IMPORTS — Tamale & Accra, Ghana. Call 0539781532.",
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "Contact — BADAWIA'S IMPORTS", type: 'image/png' }],
     url: '/contact',
-    locale: 'en_GH',
+    locale: 'en',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Contact Luxury Strand Haven | Premium Hair Ghana',
-    description: 'Contact us for custom wig orders and hair consultations.',
-    images: ['/og-home.png'],
+    title: "Contact Us | BADAWIA'S IMPORTS",
+    description: "Get in touch — Tamale & Accra, Ghana.",
+    images: ['/opengraph-image'],
   },
   alternates: { canonical: '/contact' },
 };

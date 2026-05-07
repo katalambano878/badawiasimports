@@ -54,17 +54,15 @@ export default function ProductSort({ onSortChange, totalProducts }: ProductSort
           <div className="flex items-center border-2 border-gray-300 rounded-lg overflow-hidden">
             <button
               onClick={() => setViewMode('grid')}
-              className={`w-10 h-10 flex items-center justify-center transition-colors ${
-                viewMode === 'grid' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
+              className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'bg-primary text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
             >
               <i className="ri-grid-line"></i>
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`w-10 h-10 flex items-center justify-center transition-colors ${
-                viewMode === 'list' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
+              className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
             >
               <i className="ri-list-check"></i>
             </button>

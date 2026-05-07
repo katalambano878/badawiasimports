@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useCart } from '@/context/CartContext';
 
 interface Product {
   id: string;
@@ -19,6 +20,8 @@ interface Product {
   stockCount: number;
   colors?: string[];
   sizes?: string[];
+  slug?: string;
+  moq?: number;
 }
 
 interface QuickViewModalProps {
@@ -28,15 +31,30 @@ interface QuickViewModalProps {
 }
 
 export default function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps) {
+  const { addToCart } = useCart();
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState(product.colors?.[0] || '');
   const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] || '');
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(Math.max(1, product.moq ?? 1));
   const [addedToCart, setAddedToCart] = useState(false);
 
   const images = product.images || [product.image];
 
   const handleAddToCart = () => {
+    if (!product.inStock) return;
+    const variantParts = [selectedColor, selectedSize].filter(Boolean);
+    const variantLabel = variantParts.length > 0 ? variantParts.join(' / ') : undefined;
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: images[0] ?? product.image,
+      quantity,
+      variant: variantLabel,
+      slug: product.slug ?? product.id,
+      maxStock: product.stockCount,
+      moq: product.moq ?? 1,
+    });
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   };
@@ -184,7 +202,7 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
                   <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity</label>
                   <div className="flex items-center border-2 border-gray-300 rounded-lg w-32">
                     <button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      onClick={() => setQuantity(Math.max(product.moq ?? 1, quantity - 1))}
                       className="w-10 h-12 flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors"
                     >
                       <i className="ri-subtract-line"></i>
@@ -192,9 +210,9 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
                     <input
                       type="number"
                       value={quantity}
-                      onChange={(e) => setQuantity(Math.max(1, Math.min(product.stockCount, parseInt(e.target.value) || 1)))}
+                      onChange={(e) => setQuantity(Math.max(product.moq ?? 1, Math.min(product.stockCount, parseInt(e.target.value) || (product.moq ?? 1))))}
                       className="w-12 h-12 text-center border-x-2 border-gray-300 focus:outline-none font-semibold"
-                      min="1"
+                      min={product.moq ?? 1}
                       max={product.stockCount}
                     />
                     <button
@@ -215,9 +233,9 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
                     disabled={!product.inStock}
                     className={`w-full py-4 rounded-lg font-semibold transition-colors whitespace-nowrap ${
                       addedToCart
-                        ? 'bg-gray-900 text-white'
+                        ? 'bg-primary text-white'
                         : product.inStock
-                        ? 'bg-gray-900 hover:bg-gray-800 text-white'
+                        ? 'bg-primary hover:bg-primary-dark text-white'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
                   >
@@ -235,7 +253,7 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
                   </button>
 
                   <Link
-                    href={`/product/${product.id}`}
+                    href={`/product/${product.slug ?? product.id}`}
                     className="block w-full py-4 border-2 border-gray-900 text-gray-900 rounded-lg font-semibold text-center hover:bg-gray-50 transition-colors whitespace-nowrap"
                   >
                     View Full Details

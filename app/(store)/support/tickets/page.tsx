@@ -75,7 +75,7 @@ export default function MyTicketsPage() {
             </div>
             <Link
               href="/support/ticket"
-              className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap"
+              className="bg-primary hover:bg-primary text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap"
             >
               <i className="ri-add-line mr-2"></i>
               New Ticket
@@ -136,7 +136,7 @@ export default function MyTicketsPage() {
               <p className="text-gray-600 mb-6">You don't have any support tickets yet</p>
               <Link
                 href="/support/ticket"
-                className="inline-block bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap"
+                className="inline-block bg-primary hover:bg-primary text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap"
               >
                 Create Your First Ticket
               </Link>
@@ -206,11 +206,11 @@ export default function MyTicketsPage() {
             </div>
 
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="w-12 h-12 flex items-center justify-center bg-purple-100 rounded-lg mb-4">
-                <i className="ri-customer-service-line text-2xl text-purple-700"></i>
+              <div className="w-12 h-12 flex items-center justify-center bg-primary-soft rounded-lg mb-4">
+                <i className="ri-customer-service-line text-2xl text-primary"></i>
               </div>
               <h3 className="font-bold text-gray-900 mb-2">Support Hours</h3>
-              <p className="text-2xl font-bold text-purple-700 mb-1">24/7</p>
+              <p className="text-2xl font-bold text-primary mb-1">24/7</p>
               <p className="text-sm text-gray-600">Always here to help</p>
             </div>
           </div>

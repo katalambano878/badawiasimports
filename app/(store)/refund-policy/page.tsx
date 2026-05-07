@@ -7,8 +7,8 @@ import AnimatedSection from '@/components/AnimatedSection';
 
 export default function RefundPolicyPage() {
   const { getSetting } = useCMS();
-  const contactEmail = getSetting('contact_email') || 'maame890@gmail.com';
-  const contactPhone = getSetting('contact_phone') || '054 930 7736';
+  const contactEmail = getSetting('contact_email') || '';
+  const contactPhone = getSetting('contact_phone') || '';
   const whatsappNumber = toWhatsAppNumber(contactPhone);
   const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber}` : '#';
 
@@ -31,7 +31,7 @@ export default function RefundPolicyPage() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">Return Policy</h2>
             <p className="text-gray-600 leading-relaxed mb-4">
-              We have a 24-hour return policy, which means you have 24 hours after receiving your item to request a return if items are faulty or damaged or not what you requested. (Due to hygiene reasons, we are unable to accept refunds for any other reason except for the above.)
+              Please review the eligibility requirements below and contact us first to request return approval before sending any item back.
             </p>
 
             <h3 className="text-xl font-bold text-gray-900 mb-4 mt-8">Exceptions / Non-returnable Items</h3>

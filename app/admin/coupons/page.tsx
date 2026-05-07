@@ -12,6 +12,7 @@ export default function AdminCouponsPage() {
 
   useEffect(() => {
     fetchCoupons();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 
   const fetchCoupons = async () => {
@@ -76,7 +77,7 @@ export default function AdminCouponsPage() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer"
+          className="bg-primary hover:bg-primary text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer"
         >
           <i className="ri-add-line mr-2"></i>
           Create Coupon
@@ -98,7 +99,7 @@ export default function AdminCouponsPage() {
         </div>
         <div className="bg-white rounded-xl border-2 border-gray-200 p-4">
           <p className="text-sm text-gray-600 mb-1">Total Discount</p>
-          <p className="text-2xl font-bold text-purple-700">--</p>
+          <p className="text-2xl font-bold text-primary">--</p>
         </div>
       </div>
 

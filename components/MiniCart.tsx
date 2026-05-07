@@ -29,12 +29,12 @@ export default function MiniCart({ isOpen, onClose }: MiniCartProps) {
   return (
     <>
       <div
-        className="fixed inset-0 bg-gray-900 bg-opacity-50 z-40 transition-opacity"
+        className="fixed inset-0 bg-primary-dark/40 z-[55] transition-opacity"
         onClick={onClose}
       ></div>
 
-      <div className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-50 flex flex-col slide-in-right">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      <div className="fixed top-0 right-0 bottom-0 h-[100dvh] w-full max-w-md bg-white shadow-2xl z-[60] flex flex-col slide-in-right">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 shrink-0">
           <h2 className="text-xl font-bold text-gray-900">
             Shopping Cart ({cart.reduce((sum, i) => sum + i.quantity, 0)})
           </h2>
@@ -56,18 +56,18 @@ export default function MiniCart({ isOpen, onClose }: MiniCartProps) {
             <Link
               href="/shop"
               onClick={onClose}
-              className="px-6 py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors whitespace-nowrap cursor-pointer"
+              className="px-6 py-3 bg-primary hover:bg-primary-dark text-white rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer"
             >
               Continue Shopping
             </Link>
           </div>
         ) : (
-          <>
-            <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex flex-1 min-h-0 flex-col">
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
               <div className="space-y-4">
                 {cart.map((item) => (
-                  <div key={`${item.id}-${item.variant}`} className="flex space-x-4 bg-gray-50 rounded-lg p-4">
-                    <div className="w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
+                  <div key={`${item.id}-${item.variant}`} className="flex space-x-4 bg-gray-50 rounded-lg p-3">
+                    <div className="w-16 h-16 bg-white rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
                       <img
                         src={item.image}
                         alt={item.name}
@@ -125,34 +125,34 @@ export default function MiniCart({ isOpen, onClose }: MiniCartProps) {
               </div>
             </div>
 
-            <div className="border-t border-gray-200 p-6 bg-gray-50">
-              <div className="flex items-center justify-between mb-4">
+            <div className="border-t border-gray-200 p-5 sm:p-6 pb-[calc(env(safe-area-inset-bottom)+5rem)] lg:pb-6 bg-gray-50 shrink-0">
+              <div className="flex items-center justify-between mb-3">
                 <span className="text-gray-700 font-medium">Subtotal</span>
                 <span className="text-2xl font-bold text-gray-900">GH₵{subtotal.toFixed(2)}</span>
               </div>
 
-              <p className="text-sm text-gray-600 mb-4 text-center">
+              <p className="text-sm text-gray-600 mb-3 text-center">
                 Shipping calculated at checkout
               </p>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Link
                   href="/checkout"
                   onClick={onClose}
-                  className="block w-full py-4 bg-gray-900 text-white text-center rounded-lg font-semibold hover:bg-gray-800 transition-colors whitespace-nowrap cursor-pointer"
+                  className="block w-full py-2.5 text-sm bg-primary text-white text-center rounded-lg font-semibold hover:bg-primary-dark transition-colors whitespace-nowrap cursor-pointer"
                 >
                   Proceed to Checkout
                 </Link>
                 <Link
                   href="/cart"
                   onClick={onClose}
-                  className="block w-full py-4 border-2 border-gray-900 text-gray-900 text-center rounded-lg font-semibold hover:bg-gray-50 transition-colors whitespace-nowrap cursor-pointer"
+                  className="block w-full py-2.5 text-sm border-2 border-primary text-primary text-center rounded-lg font-semibold hover:bg-primary-soft transition-colors whitespace-nowrap cursor-pointer"
                 >
                   View Cart
                 </Link>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </>

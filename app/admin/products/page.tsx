@@ -31,6 +31,7 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchProducts();
     fetchCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch when sortBy changes
   }, [sortBy]);
 
   const fetchCategories = async () => {
@@ -109,27 +110,62 @@ export default function ProductsPage() {
   };
 
   const handleDeleteProduct = async (productId: string) => {
-    if (confirm('Are you sure you want to delete this product?')) {
+    const product = products.find(p => p.id === productId);
+    const productName = product?.name || 'this product';
+
+    if (!confirm(`Delete "${productName}"?\n\nThis will also remove all images and variants for this product. Past orders will be preserved.\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      // 1. Clean up owned data first (works whether or not the migration has run)
+      await supabase.from('product_images').delete().eq('product_id', productId);
+      await supabase.from('product_variants').delete().eq('product_id', productId);
+
+      // 2. Delete the product
       const { error } = await supabase.from('products').delete().eq('id', productId);
-      if (!error) {
-        setProducts(products.filter(p => p.id !== productId));
-        alert('Product deleted successfully');
-      } else {
-        alert('Error deleting product');
+
+      if (error) {
+        if (error.code === '23503') {
+          alert(`Cannot delete "${productName}".\n\nIt's referenced by existing orders, reviews, or other records. Try setting its status to "inactive" instead, or run the latest database migration.`);
+        } else {
+          alert(`Error deleting "${productName}":\n\n${error.message}`);
+        }
+        return;
       }
+
+      setProducts(products.filter(p => p.id !== productId));
+      alert(`"${productName}" was deleted successfully.`);
+    } catch (err: any) {
+      alert(`Unexpected error deleting product:\n\n${err.message || err}`);
     }
   };
 
   const handleBulkDelete = async () => {
-    if (confirm(`Are you sure you want to delete ${selectedProducts.length} products?`)) {
+    if (!confirm(`Delete ${selectedProducts.length} product${selectedProducts.length > 1 ? 's' : ''}?\n\nThis will also remove all images and variants. Past orders will be preserved.\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await supabase.from('product_images').delete().in('product_id', selectedProducts);
+      await supabase.from('product_variants').delete().in('product_id', selectedProducts);
+
       const { error } = await supabase.from('products').delete().in('id', selectedProducts);
-      if (!error) {
-        setProducts(products.filter(p => !selectedProducts.includes(p.id)));
-        setSelectedProducts([]);
-        alert('Products deleted successfully');
-      } else {
-        alert('Error deleting products');
+
+      if (error) {
+        if (error.code === '23503') {
+          alert(`Cannot delete some products — they're referenced by existing orders or other records.\n\nTry setting them to "inactive" instead, or run the latest database migration.`);
+        } else {
+          alert(`Error deleting products:\n\n${error.message}`);
+        }
+        return;
       }
+
+      setProducts(products.filter(p => !selectedProducts.includes(p.id)));
+      setSelectedProducts([]);
+      alert(`${selectedProducts.length} product${selectedProducts.length > 1 ? 's' : ''} deleted successfully.`);
+    } catch (err: any) {
+      alert(`Unexpected error:\n\n${err.message || err}`);
     }
   };
 
@@ -149,7 +185,7 @@ export default function ProductsPage() {
         </div>
         <Link
           href="/admin/products/new"
-          className="px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer flex items-center justify-center md:items-start"
+          className="px-6 py-3 bg-primary hover:bg-primary text-white rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer flex items-center justify-center md:items-start"
         >
           <i className="ri-add-line mr-2"></i>
           Add Product
@@ -385,7 +421,7 @@ export default function ProductsPage() {
                 <div className="flex items-center space-x-2">
                   <Link
                     href={`/admin/products/${product.id}`}
-                    className="flex-1 bg-gray-900 hover:bg-gray-800 text-white py-2 rounded-lg text-sm font-medium text-center transition-colors whitespace-nowrap cursor-pointer"
+                    className="flex-1 bg-primary hover:bg-primary text-white py-2 rounded-lg text-sm font-medium text-center transition-colors whitespace-nowrap cursor-pointer"
                   >
                     Edit
                   </Link>

@@ -19,6 +19,7 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
     const [categoryId, setCategoryId] = useState(initialData?.category_id || '');
     const [price, setPrice] = useState(initialData?.price || '');
     const [comparePrice, setComparePrice] = useState(initialData?.compare_at_price || '');
+    const [salePrice, setSalePrice] = useState(initialData?.sale_price || '');
     const [sku, setSku] = useState(initialData?.sku || '');
     const [stock, setStock] = useState(initialData?.quantity || '');
     const [moq, setMoq] = useState(initialData?.moq || '1');
@@ -37,145 +38,121 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
         return `${prefix}-${timestamp}-${random}`;
     };
 
-    // ── Default Product Option Groups (toggleable per product) ──────────
-    type OptionGroupDef = {
-        key: string;
-        label: string;
-        type: 'values' | 'color';
-        defaultValues: string[];
-        generatesVariants: boolean; // whether this option creates price/stock variants
-    };
-
-    const DEFAULT_OPTION_GROUPS: OptionGroupDef[] = [
-        { key: 'color', label: 'Color', type: 'color', defaultValues: [], generatesVariants: false },
-        { key: 'lace_type', label: 'Lace Type', type: 'values', defaultValues: ['HD Lace', 'Transparent Lace'], generatesVariants: false },
-        { key: 'lace_length', label: 'Lace Length', type: 'values', defaultValues: ['2x6', '4x4', '5x5', '6x6', '7x7', '13x4', '13x6'], generatesVariants: false },
-        { key: 'length', label: 'Length', type: 'values', defaultValues: ['10"', '12"', '14"', '16"', '18"', '20"', '22"', '24"', '26"', '28"', '30"'], generatesVariants: true },
-        { key: 'wig_size', label: 'Wig Size', type: 'values', defaultValues: ['Small', 'Medium', 'Large', 'Extra Large'], generatesVariants: false },
-        { key: 'density', label: 'Density', type: 'values', defaultValues: ['250', '300', '350'], generatesVariants: false },
+    // ── Preset Colors ──────────
+    const PRESET_COLORS: { name: string; hex: string }[] = [
+        { name: 'Black', hex: '#000000' }, { name: 'White', hex: '#FFFFFF' },
+        { name: 'Red', hex: '#EF4444' }, { name: 'Blue', hex: '#3B82F6' },
+        { name: 'Navy', hex: '#1E3A5F' }, { name: 'Green', hex: '#22C55E' },
+        { name: 'Yellow', hex: '#EAB308' }, { name: 'Pink', hex: '#EC4899' },
+        { name: 'Purple', hex: '#A855F7' }, { name: 'Orange', hex: '#F97316' },
+        { name: 'Gray', hex: '#6B7280' }, { name: 'Brown', hex: '#92400E' },
+        { name: 'Beige', hex: '#D4A574' }, { name: 'Maroon', hex: '#7F1D1D' },
+        { name: 'Teal', hex: '#14B8A6' }, { name: 'Cream', hex: '#FFFDD0' },
+        { name: 'Gold', hex: '#D4A017' }, { name: 'Silver', hex: '#C0C0C0' },
     ];
 
-    // State: which option groups are enabled + their current values
-    type OptionGroupState = {
-        enabled: boolean;
-        values: string[];
-        generatesVariants: boolean;
-    };
+    const PRESET_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
 
-    const [optionGroupStates, setOptionGroupStates] = useState<Record<string, OptionGroupState>>(() => {
-        const stored = initialData?.metadata?.product_options as Record<string, { values: string[]; generatesVariants?: boolean }> | undefined;
-        const state: Record<string, OptionGroupState> = {};
-        DEFAULT_OPTION_GROUPS.forEach(def => {
-            if (stored && stored[def.key]) {
-                state[def.key] = {
-                    enabled: true,
-                    values: stored[def.key].values || def.defaultValues,
-                    generatesVariants: stored[def.key].generatesVariants ?? def.generatesVariants,
-                };
-            } else {
-                state[def.key] = {
-                    enabled: false,
-                    values: def.defaultValues,
-                    generatesVariants: def.generatesVariants,
-                };
-            }
-        });
-        return state;
+    // Selected colors: array of { name, hex, image? }
+    // image is an optional photo of the product in this specific color. When the
+    // shopper clicks the color swatch on the storefront, the main product image
+    // swaps to this photo.
+    const [selectedColors, setSelectedColors] = useState<{ name: string; hex: string; image?: string }[]>(() => {
+        const stored = initialData?.metadata?.selected_colors as { name: string; hex: string; image?: string }[] | undefined;
+        return stored || [];
     });
 
-    // Custom (non-default) option groups — for selling non-wig products
-    const [customGroups, setCustomGroups] = useState<{ name: string; values: string[]; generatesVariants: boolean }[]>(() => {
-        const storedCustom = initialData?.metadata?.custom_option_groups as { name: string; values: string[]; generatesVariants?: boolean }[] | undefined;
-        return storedCustom || [];
+    const [uploadingColorName, setUploadingColorName] = useState<string | null>(null);
+    const [colorUploadError, setColorUploadError] = useState<string | null>(null);
+
+    // Selected sizes: array of strings
+    const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
+        const stored = initialData?.metadata?.selected_sizes as string[] | undefined;
+        return stored || [];
     });
-    const [customGroupInput, setCustomGroupInput] = useState('');
 
-    // Color picker state
-    const [colorPickerHex, setColorPickerHex] = useState('#000000');
-    const [colorPickerName, setColorPickerName] = useState('');
+    // Custom color input
+    const [customColorName, setCustomColorName] = useState('');
+    const [customColorHex, setCustomColorHex] = useState('#6B7280');
 
-    const [customOptionInput, setCustomOptionInput] = useState<Record<string, string>>({});
+    // Custom size input
+    const [customSizeInput, setCustomSizeInput] = useState('');
 
-    const toggleOptionGroup = (key: string) => {
-        setOptionGroupStates(prev => ({
-            ...prev,
-            [key]: { ...prev[key], enabled: !prev[key].enabled },
-        }));
-    };
-
-    const toggleGeneratesVariants = (key: string) => {
-        setOptionGroupStates(prev => ({
-            ...prev,
-            [key]: { ...prev[key], generatesVariants: !prev[key].generatesVariants },
-        }));
-    };
-
-    const addValueToGroup = (key: string, value: string) => {
-        if (!value.trim()) return;
-        setOptionGroupStates(prev => {
-            const g = prev[key];
-            if (g.values.includes(value.trim())) return prev;
-            return { ...prev, [key]: { ...g, values: [...g.values, value.trim()] } };
+    const toggleColor = (color: { name: string; hex: string }) => {
+        setSelectedColors(prev => {
+            const exists = prev.some(c => c.name === color.name);
+            return exists ? prev.filter(c => c.name !== color.name) : [...prev, color];
         });
-        setCustomOptionInput(prev => ({ ...prev, [key]: '' }));
     };
 
-    const removeValueFromGroup = (key: string, value: string) => {
-        setOptionGroupStates(prev => ({
-            ...prev,
-            [key]: { ...prev[key], values: prev[key].values.filter(v => v !== value) },
-        }));
+    const addCustomColor = () => {
+        const name = customColorName.trim();
+        if (!name) return;
+        if (selectedColors.some(c => c.name === name)) return;
+        setSelectedColors(prev => [...prev, { name, hex: customColorHex }]);
+        setCustomColorName('');
     };
 
-    const addColorValue = () => {
-        const label = colorPickerName.trim() || colorPickerHex;
-        const colorVal = `${label}|${colorPickerHex}`;
-        setOptionGroupStates(prev => {
-            const g = prev['color'];
-            if (g.values.some(v => v.split('|')[1] === colorPickerHex)) return prev;
-            return { ...prev, color: { ...g, values: [...g.values, colorVal] } };
+    const handleColorImageUpload = async (colorName: string, file: File) => {
+        setColorUploadError(null);
+        if (file.size > 5 * 1024 * 1024) {
+            setColorUploadError(`${colorName}: file too large (max 5MB).`);
+            return;
+        }
+        if (!/^image\/(jpeg|png|gif|webp)$/.test(file.type)) {
+            setColorUploadError(`${colorName}: only JPG/PNG/GIF/WebP allowed.`);
+            return;
+        }
+        setUploadingColorName(colorName);
+        try {
+            const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+            const safe = colorName.replace(/[^a-z0-9-_]/gi, '-').toLowerCase();
+            const path = `products/colors/${safe}-${Date.now()}.${ext}`;
+            const { error: uploadErr } = await supabase.storage
+                .from('media')
+                .upload(path, file, { cacheControl: '3600', upsert: true });
+            if (uploadErr) throw uploadErr;
+            const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path);
+            setSelectedColors(prev => prev.map(c => c.name === colorName ? { ...c, image: publicUrl } : c));
+        } catch (err: any) {
+            console.error('[ColorImage] upload failed', err);
+            setColorUploadError(`${colorName}: upload failed (${err?.message || 'unknown error'}).`);
+        } finally {
+            setUploadingColorName(null);
+        }
+    };
+
+    const removeColorImage = (colorName: string) => {
+        setSelectedColors(prev => prev.map(c => c.name === colorName ? { ...c, image: undefined } : c));
+    };
+
+    const toggleSize = (size: string) => {
+        setSelectedSizes(prev =>
+            prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
+        );
+    };
+
+    const addCustomSize = () => {
+        const size = customSizeInput.trim();
+        if (!size || selectedSizes.includes(size)) return;
+        setSelectedSizes(prev => [...prev, size]);
+        setCustomSizeInput('');
+    };
+
+    // Build variant-generating groups from selected colors & sizes.
+    // ORDER MATTERS: storefront expects option1=Size, option2=Color.
+    // Color values are stored as "Name|#hex" so the storefront can render swatches without lookups.
+    const activeGroups: { name: string; values: string[]; isColor?: boolean }[] = [];
+    if (selectedSizes.length > 0) activeGroups.push({ name: 'Size', values: selectedSizes });
+    if (selectedColors.length > 0) {
+        activeGroups.push({
+            name: 'Color',
+            // Pipe-separated: "Name|hex|imageUrl". The third part is optional — when
+            // present the storefront swaps the main product photo to it.
+            values: selectedColors.map(c => `${c.name}|${c.hex}${c.image ? `|${c.image}` : ''}`),
+            isColor: true,
         });
-        setColorPickerName('');
-    };
-
-    const resetGroupToDefaults = (key: string) => {
-        const def = DEFAULT_OPTION_GROUPS.find(d => d.key === key);
-        if (!def) return;
-        setOptionGroupStates(prev => ({
-            ...prev,
-            [key]: { ...prev[key], values: def.defaultValues },
-        }));
-    };
-
-    // Custom group helpers
-    const addCustomGroup = () => {
-        const name = customGroupInput.trim();
-        if (!name || customGroups.some(g => g.name === name)) return;
-        setCustomGroups(prev => [...prev, { name, values: [], generatesVariants: false }]);
-        setCustomGroupInput('');
-    };
-    const removeCustomGroup = (idx: number) => setCustomGroups(prev => prev.filter((_, i) => i !== idx));
-    const addCustomGroupValue = (idx: number, val: string) => {
-        if (!val.trim()) return;
-        setCustomGroups(prev => prev.map((g, i) => i === idx && !g.values.includes(val.trim()) ? { ...g, values: [...g.values, val.trim()] } : g));
-        setCustomOptionInput(prev => ({ ...prev, [`custom_${idx}`]: '' }));
-    };
-    const removeCustomGroupValue = (idx: number, val: string) => {
-        setCustomGroups(prev => prev.map((g, i) => i === idx ? { ...g, values: g.values.filter(v => v !== val) } : g));
-    };
-
-    // Build the variant-generating groups for price/stock table
-    const enabledDefaults = DEFAULT_OPTION_GROUPS.filter(d => optionGroupStates[d.key]?.enabled && optionGroupStates[d.key]?.values.length > 0);
-    const variantGeneratingGroups = [
-        ...enabledDefaults.filter(d => optionGroupStates[d.key].generatesVariants).map(d => ({
-            name: d.label,
-            values: d.key === 'color' ? optionGroupStates[d.key].values.map(v => v.split('|')[0]) : optionGroupStates[d.key].values,
-        })),
-        ...customGroups.filter(g => g.generatesVariants && g.values.length > 0).map(g => ({ name: g.name, values: g.values })),
-    ];
-
-    // Legacy compat: optionGroups / activeGroups used in handleSubmit
-    const activeGroups = variantGeneratingGroups;
+    }
 
     const existingVariants = (initialData?.product_variants || []).map((v: any) => ({
         ...v,
@@ -245,6 +222,7 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
     const [seoTitle, setSeoTitle] = useState(initialData?.seo_title || '');
     const [metaDescription, setMetaDescription] = useState(initialData?.seo_description || '');
     const [urlSlug, setUrlSlug] = useState(initialData?.slug || '');
+    const [slugManuallyEdited, setSlugManuallyEdited] = useState(!!initialData?.slug);
     const [keywords, setKeywords] = useState(initialData?.tags?.join(', ') || '');
 
     const tabs = [
@@ -269,12 +247,15 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
         fetchCategories();
     }, [categoryId]);
 
-    // Auto-generate slug from name if not manually edited
+    const generateSlug = (text: string) =>
+        text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+
+    // Auto-generate slug from name unless admin manually edited it
     useEffect(() => {
-        if (!isEditMode && productName && !urlSlug) {
-            setUrlSlug(productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''));
+        if (!slugManuallyEdited && productName) {
+            setUrlSlug(generateSlug(productName));
         }
-    }, [productName, isEditMode, urlSlug]);
+    }, [productName, slugManuallyEdited]);
 
     // Auto-generate SKU for new products
     useEffect(() => {
@@ -282,9 +263,6 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
             setSku(generateSku());
         }
     }, [isEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo'];
-    const isVideoFile = (url: string) => /\.(mp4|webm|ogg|mov|avi)$/i.test(url);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         try {
@@ -306,7 +284,7 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                 .from('products')
                 .getPublicUrl(filePath);
 
-            setImages([...images, { url: publicUrl, position: images.length, is_video: VIDEO_TYPES.includes(file.type) }]);
+            setImages([...images, { url: publicUrl, position: images.length }]);
 
         } catch (error: any) {
             alert('Error uploading file: ' + error.message);
@@ -333,11 +311,12 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
 
             const productData = {
                 name: productName,
-                slug: urlSlug || productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+                slug: urlSlug || generateSlug(productName),
                 description,
                 category_id: categoryId || null,
                 price: parseFloat(price) || 0,
                 compare_at_price: comparePrice ? parseFloat(comparePrice) : null,
+                sale_price: salePrice ? parseFloat(salePrice) : null,
                 sku: sku || generateSku(), // Auto-generate if empty
                 quantity: hasVariants ? variantStockTotal : (parseInt(stock) || 0),
                 moq: parseInt(moq) || 1,
@@ -350,13 +329,17 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                     low_stock_threshold: parseInt(lowStockThreshold) || 5,
                     preorder_shipping: preorderShipping.trim() || null,
                     option_names: activeGroups.map((g, i) => g.name || `Option ${i + 1}`),
-                    product_options: Object.fromEntries(
-                        enabledDefaults.map(d => [d.key, {
-                            values: optionGroupStates[d.key].values,
-                            generatesVariants: optionGroupStates[d.key].generatesVariants,
-                        }])
-                    ),
-                    custom_option_groups: customGroups.filter(g => g.values.length > 0),
+                    selected_colors: selectedColors,
+                    selected_sizes: selectedSizes,
+                    product_options: selectedColors.length > 0 ? {
+                        color: {
+                            values: selectedColors.map(c => `${c.name}|${c.hex}${c.image ? `|${c.image}` : ''}`),
+                            generatesVariants: true,
+                        },
+                    } : {},
+                    custom_option_groups: selectedSizes.length > 0 ? [
+                        { name: 'Size', values: selectedSizes, generatesVariants: true },
+                    ] : [],
                 }
             };
 
@@ -413,17 +396,32 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                 }
 
                 if (variants.length > 0) {
-                    const variantInserts = variants.map(v => ({
-                        product_id: productId,
-                        name: v.values.join(' / ') || 'Default',
-                        sku: v.sku || null,
-                        price: parseFloat(v.price) || 0,
-                        quantity: parseInt(v.stock) || 0,
-                        option1: v.values[0] || null,
-                        option2: v.values[1] || null,
-                        option3: v.values[2] || null,
-                        metadata: {},
-                    }));
+                    const variantInserts = variants.map(v => {
+                        // Strip "|hex|image" from any color value so the displayed
+                        // variant name stays readable.
+                        const displayValues = v.values.map(val => val.includes('|') ? val.split('|')[0] : val);
+                        const colorVal = v.values.find(val => val.includes('|'));
+                        const [colorName = '', colorHex = '', colorImage = ''] = colorVal ? colorVal.split('|') : [];
+
+                        const meta: Record<string, string> = {};
+                        if (colorHex) meta.color_hex = colorHex;
+                        if (colorName) meta.color_name = colorName;
+                        if (colorImage) meta.color_image = colorImage;
+
+                        return {
+                            product_id: productId,
+                            name: displayValues.join(' / ') || 'Default',
+                            sku: v.sku || null,
+                            price: parseFloat(v.price) || 0,
+                            quantity: parseInt(v.stock) || 0,
+                            // option1/2/3 keep the full encoded "Name|hex|image" string so the
+                            // storefront's variant-matching by encoded value continues to work.
+                            option1: v.values[0] || null,
+                            option2: v.values[1] || null,
+                            option3: v.values[2] || null,
+                            metadata: Object.keys(meta).length > 0 ? meta : {},
+                        };
+                    });
                     const { error: varError } = await supabase.from('product_variants').insert(variantInserts);
                     if (varError) throw varError;
                 }
@@ -474,7 +472,7 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
-                        className={`px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer flex items-center ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        className={`px-6 py-3 bg-primary hover:bg-primary text-white rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer flex items-center ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
                         {loading ? (
                             <>
@@ -642,8 +640,62 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                                 </div>
                             </div>
 
+                            {/* ── Sale Price ─────────────────── */}
+                            <div className="rounded-xl border-2 border-dashed border-red-200 bg-red-50/50 p-5 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <i className="ri-fire-line text-xl text-red-500"></i>
+                                        <h4 className="font-bold text-gray-900">Sale Price</h4>
+                                    </div>
+                                    <Link
+                                        href="/admin/sale-pricing"
+                                        className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
+                                    >
+                                        <i className="ri-toggle-line text-base"></i>
+                                        Sale Pricing Toggle
+                                        <i className="ri-arrow-right-s-line"></i>
+                                    </Link>
+                                </div>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                            Sale Price (GH₵)
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-red-500 font-semibold">GH₵</span>
+                                            <input
+                                                type="number"
+                                                value={salePrice}
+                                                onChange={(e) => setSalePrice(e.target.value)}
+                                                className="w-full pl-16 pr-4 py-3 border-2 border-red-200 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-red-400 bg-white"
+                                                step="0.01"
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                        <p className="text-sm text-gray-500 mt-1.5">Only active when the store-wide sale toggle is ON.</p>
+                                    </div>
+                                    <div className="flex items-end">
+                                        {salePrice && price && parseFloat(salePrice) < parseFloat(price) ? (
+                                            <div className="w-full p-3 bg-white rounded-lg border border-red-200">
+                                                <p className="text-sm text-gray-600">Sale Discount</p>
+                                                <p className="text-2xl font-bold text-red-600">
+                                                    {(((parseFloat(price) - parseFloat(salePrice)) / parseFloat(price)) * 100).toFixed(0)}% OFF
+                                                </p>
+                                                <p className="text-sm text-gray-500">
+                                                    Save GH₵ {(parseFloat(price) - parseFloat(salePrice)).toFixed(2)}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full p-3 bg-white rounded-lg border border-red-200 text-center">
+                                                <p className="text-sm text-gray-400">Set a sale price lower than the regular price to see savings</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                <p className="text-blue-900 font-semibold mb-1">Discount Calculation</p>
+                                <p className="text-blue-900 font-semibold mb-1">Compare-At Discount</p>
                                 {price && comparePrice && parseFloat(comparePrice) > parseFloat(price) ? (
                                     <p className="text-blue-800">
                                         Savings: GH₵ {(parseFloat(comparePrice) - parseFloat(price)).toFixed(2)}
@@ -750,207 +802,206 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                     {activeTab === 'variants' && (
                         <div className="space-y-8">
                             <div>
-                                <h3 className="text-lg font-bold text-gray-900">Product Options</h3>
-                                <p className="text-gray-600 mt-1">Toggle which option groups apply to this product. Options marked with ⚡ generate price/stock variants.</p>
+                                <h3 className="text-lg font-bold text-gray-900">Product Variants</h3>
+                                <p className="text-gray-600 mt-1">Select colors and sizes below — variants are generated automatically</p>
                             </div>
 
-                            {/* Default option groups — toggle cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {DEFAULT_OPTION_GROUPS.map(def => {
-                                    const state = optionGroupStates[def.key];
-                                    if (!state) return null;
-                                    const isColor = def.type === 'color';
-                                    return (
-                                        <div key={def.key} className={`rounded-xl border-2 transition-all ${state.enabled ? 'border-gray-900 bg-white shadow-sm' : 'border-gray-200 bg-gray-50 opacity-70'}`}>
-                                            {/* Toggle header */}
-                                            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-                                                <label className="flex items-center gap-3 cursor-pointer flex-1">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={state.enabled}
-                                                        onChange={() => toggleOptionGroup(def.key)}
-                                                        className="w-5 h-5 text-gray-900 border-gray-300 rounded cursor-pointer"
+                            {/* ── Step 1: Select Colors ─────────────────── */}
+                            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                                <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
+                                    <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                                        <i className="ri-palette-line text-lg text-primary"></i>
+                                        Step 1: Select Colors
+                                    </h4>
+                                    <p className="text-sm text-gray-500 mt-0.5">Click colors to add/remove. Skip if product has no color options.</p>
+                                </div>
+                                <div className="p-5 space-y-4">
+                                    <div className="flex flex-wrap gap-2">
+                                        {PRESET_COLORS.map(color => {
+                                            const isSelected = selectedColors.some(c => c.name === color.name);
+                                            const isLight = ['White', 'Cream', 'Beige', 'Yellow', 'Silver'].includes(color.name);
+                                            return (
+                                                <button
+                                                    key={color.name}
+                                                    type="button"
+                                                    onClick={() => toggleColor(color)}
+                                                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-sm font-medium border-2 transition-all cursor-pointer ${isSelected
+                                                        ? 'border-gray-900 bg-gray-900 text-white shadow-md scale-105'
+                                                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'
+                                                        }`}
+                                                >
+                                                    <span
+                                                        className={`w-5 h-5 rounded-full flex-shrink-0 ${isLight ? 'border border-gray-300' : ''}`}
+                                                        style={{ backgroundColor: color.hex }}
                                                     />
-                                                    <span className="font-bold text-gray-900">{def.label}</span>
-                                                    {state.enabled && state.generatesVariants && (
-                                                        <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">⚡ Variants</span>
-                                                    )}
-                                                </label>
-                                                {state.enabled && (
-                                                    <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={() => toggleGeneratesVariants(def.key)}
-                                                            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${state.generatesVariants ? 'bg-purple-100 border-purple-300 text-purple-700' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-400'}`}
-                                                            title="Toggle whether this option affects price/stock"
-                                                        >
-                                                            {state.generatesVariants ? '⚡ Variant' : 'Selection only'}
-                                                        </button>
-                                                        {!isColor && (
-                                                            <button
-                                                                onClick={() => resetGroupToDefaults(def.key)}
-                                                                className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1"
-                                                                title="Reset to defaults"
-                                                            >
-                                                                <i className="ri-refresh-line"></i>
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
+                                                    {color.name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
 
-                                            {/* Expanded content when enabled */}
-                                            {state.enabled && (
-                                                <div className="p-4 space-y-3">
-                                                    {/* Values chips */}
-                                                    {state.values.length > 0 && (
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {state.values.map(val => {
-                                                                if (isColor) {
-                                                                    const [name, hex] = val.split('|');
-                                                                    return (
-                                                                        <span key={val} className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-sm font-medium shadow-sm">
-                                                                            <span className="w-4 h-4 rounded-full border border-gray-300 flex-shrink-0" style={{ backgroundColor: hex || '#000' }} />
-                                                                            {name}
-                                                                            <button onClick={() => removeValueFromGroup('color', val)} className="text-gray-400 hover:text-red-500">
-                                                                                <i className="ri-close-line text-sm"></i>
-                                                                            </button>
-                                                                        </span>
-                                                                    );
-                                                                }
-                                                                return (
-                                                                    <span key={val} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-sm font-medium shadow-sm">
-                                                                        {val}
-                                                                        <button onClick={() => removeValueFromGroup(def.key, val)} className="text-gray-400 hover:text-red-500">
-                                                                            <i className="ri-close-line text-sm"></i>
-                                                                        </button>
-                                                                    </span>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    )}
-
-                                                    {/* Add value input */}
-                                                    {isColor ? (
-                                                        <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
-                                                            <input
-                                                                type="color"
-                                                                value={colorPickerHex}
-                                                                onChange={e => setColorPickerHex(e.target.value)}
-                                                                className="w-10 h-10 rounded-lg border-2 border-gray-200 cursor-pointer p-0.5"
-                                                            />
-                                                            <input
-                                                                type="text"
-                                                                value={colorPickerName}
-                                                                onChange={e => setColorPickerName(e.target.value)}
-                                                                placeholder="Color name (e.g. Jet Black)"
-                                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                                                onKeyDown={e => e.key === 'Enter' && addColorValue()}
-                                                            />
-                                                            <button
-                                                                onClick={addColorValue}
-                                                                className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
-                                                            >
-                                                                Add
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
-                                                            <input
-                                                                type="text"
-                                                                value={customOptionInput[def.key] || ''}
-                                                                onChange={e => setCustomOptionInput(prev => ({ ...prev, [def.key]: e.target.value }))}
-                                                                placeholder={`Add ${def.label.toLowerCase()} value...`}
-                                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                                                onKeyDown={e => e.key === 'Enter' && addValueToGroup(def.key, customOptionInput[def.key] || '')}
-                                                            />
-                                                            <button
-                                                                onClick={() => addValueToGroup(def.key, customOptionInput[def.key] || '')}
-                                                                disabled={!(customOptionInput[def.key] || '').trim()}
-                                                                className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                            >
-                                                                Add
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Custom option groups for non-wig products */}
-                            <div className="border-t border-gray-200 pt-6">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <h4 className="font-bold text-gray-900">Custom Option Groups</h4>
-                                        <p className="text-sm text-gray-500">Add custom options for non-wig products (e.g. Size, Material, Scent)</p>
+                                    <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                                        <input
+                                            type="color"
+                                            value={customColorHex}
+                                            onChange={e => setCustomColorHex(e.target.value)}
+                                            className="w-10 h-10 rounded-lg border-2 border-gray-200 cursor-pointer p-0.5"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={customColorName}
+                                            onChange={e => setCustomColorName(e.target.value)}
+                                            placeholder="Custom color name"
+                                            className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                                            onKeyDown={e => e.key === 'Enter' && addCustomColor()}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={addCustomColor}
+                                            disabled={!customColorName.trim()}
+                                            className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            Add Color
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 mb-4">
-                                    <input
-                                        type="text"
-                                        value={customGroupInput}
-                                        onChange={e => setCustomGroupInput(e.target.value)}
-                                        placeholder="Option group name (e.g. Size, Material)"
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                        onKeyDown={e => e.key === 'Enter' && addCustomGroup()}
-                                    />
-                                    <button
-                                        onClick={addCustomGroup}
-                                        disabled={!customGroupInput.trim()}
-                                        className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        <i className="ri-add-line mr-1"></i> Add
-                                    </button>
-                                </div>
-                                {customGroups.map((g, idx) => (
-                                    <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-3">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="font-semibold text-gray-900">{g.name}</span>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => setCustomGroups(prev => prev.map((cg, i) => i === idx ? { ...cg, generatesVariants: !cg.generatesVariants } : cg))}
-                                                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${g.generatesVariants ? 'bg-purple-100 border-purple-300 text-purple-700' : 'bg-white border-gray-200 text-gray-500'}`}
-                                                >
-                                                    {g.generatesVariants ? '⚡ Variant' : 'Selection only'}
-                                                </button>
-                                                <button onClick={() => removeCustomGroup(idx)} className="text-gray-400 hover:text-red-500">
-                                                    <i className="ri-delete-bin-line"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        {g.values.length > 0 && (
-                                            <div className="flex flex-wrap gap-2 mb-3">
-                                                {g.values.map(val => (
-                                                    <span key={val} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-sm font-medium shadow-sm">
-                                                        {val}
-                                                        <button onClick={() => removeCustomGroupValue(idx, val)} className="text-gray-400 hover:text-red-500">
-                                                            <i className="ri-close-line text-sm"></i>
-                                                        </button>
-                                                    </span>
-                                                ))}
+                            </div>
+
+                            {/* ── Step 1.5: Color Photos (Optional) ─────────────────── */}
+                            {selectedColors.length > 0 && (
+                                <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                                    <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
+                                        <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                                            <i className="ri-image-2-line text-lg text-primary"></i>
+                                            Color Photos <span className="text-xs font-normal text-gray-500 ml-1">(Optional)</span>
+                                        </h4>
+                                        <p className="text-sm text-gray-500 mt-0.5">Attach a photo to each color. When a shopper picks the color, this photo becomes the main product image.</p>
+                                    </div>
+                                    <div className="p-5 space-y-3">
+                                        {colorUploadError && (
+                                            <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                                                {colorUploadError}
                                             </div>
                                         )}
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                value={customOptionInput[`custom_${idx}`] || ''}
-                                                onChange={e => setCustomOptionInput(prev => ({ ...prev, [`custom_${idx}`]: e.target.value }))}
-                                                placeholder={`Add ${g.name.toLowerCase()} value...`}
-                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                                                onKeyDown={e => e.key === 'Enter' && addCustomGroupValue(idx, customOptionInput[`custom_${idx}`] || '')}
-                                            />
-                                            <button
-                                                onClick={() => addCustomGroupValue(idx, customOptionInput[`custom_${idx}`] || '')}
-                                                disabled={!(customOptionInput[`custom_${idx}`] || '').trim()}
-                                                className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                            >
-                                                Add
-                                            </button>
-                                        </div>
+                                        {selectedColors.map(color => {
+                                            const isLight = ['White', 'Cream', 'Beige', 'Yellow', 'Silver'].includes(color.name);
+                                            const isUploading = uploadingColorName === color.name;
+                                            return (
+                                                <div key={color.name} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50/50">
+                                                    <span
+                                                        className={`w-8 h-8 rounded-full flex-shrink-0 ${isLight ? 'border border-gray-300' : ''}`}
+                                                        style={{ backgroundColor: color.hex }}
+                                                    />
+                                                    <span className="font-medium text-gray-900 min-w-[80px]">{color.name}</span>
+
+                                                    {color.image ? (
+                                                        <>
+                                                            <img
+                                                                src={color.image}
+                                                                alt={`${color.name} preview`}
+                                                                className="w-14 h-14 rounded-lg object-cover border border-gray-200"
+                                                            />
+                                                            <span className="text-xs text-gray-500 flex-1 truncate">Photo attached</span>
+                                                            <label className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer">
+                                                                Replace
+                                                                <input
+                                                                    type="file"
+                                                                    accept="image/jpeg,image/png,image/gif,image/webp"
+                                                                    className="hidden"
+                                                                    disabled={isUploading}
+                                                                    onChange={e => {
+                                                                        const f = e.target.files?.[0];
+                                                                        if (f) handleColorImageUpload(color.name, f);
+                                                                        e.target.value = '';
+                                                                    }}
+                                                                />
+                                                            </label>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeColorImage(color.name)}
+                                                                className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50"
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span className="text-xs text-gray-400 flex-1">No photo yet</span>
+                                                            <label className={`px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-semibold hover:bg-gray-800 cursor-pointer ${isUploading ? 'opacity-50 cursor-wait' : ''}`}>
+                                                                {isUploading ? (
+                                                                    <span className="flex items-center gap-1">
+                                                                        <i className="ri-loader-4-line animate-spin"></i> Uploading…
+                                                                    </span>
+                                                                ) : 'Upload Photo'}
+                                                                <input
+                                                                    type="file"
+                                                                    accept="image/jpeg,image/png,image/gif,image/webp"
+                                                                    className="hidden"
+                                                                    disabled={isUploading}
+                                                                    onChange={e => {
+                                                                        const f = e.target.files?.[0];
+                                                                        if (f) handleColorImageUpload(color.name, f);
+                                                                        e.target.value = '';
+                                                                    }}
+                                                                />
+                                                            </label>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
-                                ))}
+                                </div>
+                            )}
+
+                            {/* ── Step 2: Select Sizes ─────────────────── */}
+                            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                                <div className="px-5 py-4 bg-gray-50 border-b border-gray-200">
+                                    <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                                        <i className="ri-ruler-line text-lg text-primary"></i>
+                                        Step 2: Select Sizes
+                                    </h4>
+                                    <p className="text-sm text-gray-500 mt-0.5">Click sizes to add/remove. Use custom for volumes (100ml), weights, etc.</p>
+                                </div>
+                                <div className="p-5 space-y-4">
+                                    <div className="flex flex-wrap gap-2">
+                                        {PRESET_SIZES.map(size => {
+                                            const isSelected = selectedSizes.includes(size);
+                                            return (
+                                                <button
+                                                    key={size}
+                                                    type="button"
+                                                    onClick={() => toggleSize(size)}
+                                                    className={`px-5 py-2.5 rounded-lg text-sm font-semibold border-2 transition-all cursor-pointer ${isSelected
+                                                        ? 'border-gray-900 bg-gray-900 text-white shadow-md scale-105'
+                                                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'
+                                                        }`}
+                                                >
+                                                    {size}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                                        <input
+                                            type="text"
+                                            value={customSizeInput}
+                                            onChange={e => setCustomSizeInput(e.target.value)}
+                                            placeholder="Custom size (e.g. 100ml, One Size, 42)"
+                                            className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
+                                            onKeyDown={e => e.key === 'Enter' && addCustomSize()}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={addCustomSize}
+                                            disabled={!customSizeInput.trim()}
+                                            className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            Add Size
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Variant Price/Stock Grid */}
@@ -958,7 +1009,7 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                                     <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between flex-wrap gap-3">
                                         <h4 className="text-sm font-bold text-gray-900 flex items-center">
-                                            <i className="ri-grid-line mr-2 text-lg text-purple-600"></i>
+                                            <i className="ri-grid-line mr-2 text-lg text-primary"></i>
                                             Set Price & Stock — {variantCombinations.length} variant{variantCombinations.length > 1 ? 's' : ''}
                                         </h4>
                                         <div className="flex items-center gap-2">
@@ -994,11 +1045,23 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                                                     const d = variantData[combo.key] || { price: price?.toString() || '', stock: '0', sku: '' };
                                                     return (
                                                         <tr key={combo.key} className="border-b border-gray-100 hover:bg-gray-50">
-                                                            {combo.values.map((val, vi) => (
-                                                                <td key={vi} className="py-3 px-4">
-                                                                    <span className="text-sm font-semibold text-gray-900 bg-gray-100 px-2.5 py-1 rounded">{val}</span>
-                                                                </td>
-                                                            ))}
+                                                            {combo.values.map((val, vi) => {
+                                                                const isColor = val.includes('|');
+                                                                const [name, hex] = isColor ? val.split('|') : [val, ''];
+                                                                return (
+                                                                    <td key={vi} className="py-3 px-4">
+                                                                        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-900 bg-gray-100 px-2.5 py-1 rounded">
+                                                                            {isColor && (
+                                                                                <span
+                                                                                    className="w-3.5 h-3.5 rounded-full border border-gray-300"
+                                                                                    style={{ backgroundColor: hex }}
+                                                                                />
+                                                                            )}
+                                                                            {name}
+                                                                        </span>
+                                                                    </td>
+                                                                );
+                                                            })}
                                                             <td className="py-3 px-4">
                                                                 <input
                                                                     type="number"
@@ -1033,12 +1096,12 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                                 </div>
                             )}
 
-                            {variantCombinations.length === 0 && activeGroups.length === 0 && (
+                            {variantCombinations.length === 0 && (
                                 <div className="p-8 text-center text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                                    <i className="ri-list-settings-line text-4xl text-gray-300 mb-3 block"></i>
-                                    <p className="font-semibold text-gray-700">No variant-generating options enabled</p>
-                                    <p className="text-sm mt-1">Toggle on option groups above and mark them as ⚡ Variant to generate price/stock combinations.</p>
-                                    <p className="text-xs mt-2 text-gray-400">Options set to &quot;Selection only&quot; will appear on the product page as selectors but won&apos;t create individual variants.</p>
+                                    <i className="ri-layout-grid-line text-4xl text-gray-300 mb-3 block"></i>
+                                    <p className="font-semibold text-gray-700">No variants configured</p>
+                                    <p className="text-sm mt-1">Select colors and/or sizes above to create variant combinations.</p>
+                                    <p className="text-xs mt-2 text-gray-400">You can add just colors, just sizes, or both for a full grid.</p>
                                 </div>
                             )}
                         </div>
@@ -1047,38 +1110,20 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                     {activeTab === 'images' && (
                         <div className="space-y-6">
                             <div>
-                                <h3 className="text-lg font-bold text-gray-900 mb-1">Product Media</h3>
-                                <p className="text-gray-600">Add images and/or videos. The first item will be the primary media.</p>
+                                <h3 className="text-lg font-bold text-gray-900 mb-1">Product Images</h3>
+                                <p className="text-gray-600">Add product images. The first image will be the primary image.</p>
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {images.map((img: any, index: number) => {
-                                    const isVid = img.is_video || isVideoFile(img.url);
                                     return (
                                         <div key={index} className="relative group">
                                             <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden border-2 border-gray-200">
-                                                {isVid ? (
-                                                    <video
-                                                        src={img.url}
-                                                        className="w-full h-full object-cover"
-                                                        muted
-                                                        playsInline
-                                                        loop
-                                                        onMouseEnter={e => (e.currentTarget as HTMLVideoElement).play()}
-                                                        onMouseLeave={e => { (e.currentTarget as HTMLVideoElement).pause(); (e.currentTarget as HTMLVideoElement).currentTime = 0; }}
-                                                    />
-                                                ) : (
-                                                    <img src={img.url} alt={`Product ${index + 1}`} className="w-full h-full object-cover" />
-                                                )}
+                                                <img src={img.url} alt={`Product ${index + 1}`} className="w-full h-full object-cover" />
                                             </div>
                                             <div className="absolute top-2 left-2 flex gap-1">
                                                 {index === 0 && (
-                                                    <span className="bg-gray-900 text-white px-2 py-1 rounded text-xs font-semibold">Primary</span>
-                                                )}
-                                                {isVid && (
-                                                    <span className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-semibold flex items-center gap-1">
-                                                        <i className="ri-video-line text-xs"></i> Video
-                                                    </span>
+                                                    <span className="bg-primary text-white px-2 py-1 rounded text-xs font-semibold">Primary</span>
                                                 )}
                                             </div>
                                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2 rounded-xl">
@@ -1102,10 +1147,10 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                                     ) : (
                                         <i className="ri-add-circle-line text-3xl"></i>
                                     )}
-                                    <span className="text-sm font-semibold text-center px-2">{uploading ? 'Uploading...' : 'Image or Video'}</span>
+                                    <span className="text-sm font-semibold text-center px-2">{uploading ? 'Uploading...' : 'Add Image'}</span>
                                     <input
                                         type="file"
-                                        accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo"
+                                        accept="image/*"
                                         className="hidden"
                                         onChange={handleImageUpload}
                                         disabled={uploading}
@@ -1115,82 +1160,165 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
 
                             <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                                 <p className="text-sm text-gray-700">
-                                    <strong>Images:</strong> JPG, PNG, WebP — min 1000×1000px recommended. &nbsp;|&nbsp;
-                                    <strong>Videos:</strong> MP4, WebM, MOV, AVI — hover to preview. Videos play automatically on the product page.
+                                    <strong>Images:</strong> JPG, PNG, WebP — min 1000×1000px recommended.
                                 </p>
                             </div>
                         </div>
                     )}
 
-                    {activeTab === 'seo' && (
+                    {activeTab === 'seo' && (() => {
+                        const effectiveTitle = seoTitle || productName || '';
+                        const effectiveDesc = metaDescription || (description ? description.slice(0, 160) : '');
+                        const effectiveSlug = urlSlug || generateSlug(productName || 'product');
+                        const titleLen = effectiveTitle.length;
+                        const descLen = effectiveDesc.length;
+
+                        return (
                         <div className="space-y-6 max-w-3xl">
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-900 mb-1">Search Engine Optimization</h3>
-                                <p className="text-gray-600">Optimize how this product appears in search results</p>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 mb-1">Search Engine Optimization</h3>
+                                    <p className="text-gray-600">Optimize how this product appears in search results</p>
+                                </div>
+                                {productName && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (!seoTitle) setSeoTitle(productName + " | Badawia's Imports");
+                                            if (!metaDescription && description) setMetaDescription(description.slice(0, 160));
+                                            if (!keywords) {
+                                                const autoKeywords = productName.split(/\s+/).filter((w: string) => w.length > 2).join(', ');
+                                                setKeywords(autoKeywords);
+                                            }
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+                                    >
+                                        <i className="ri-magic-line"></i>
+                                        Auto-fill
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Google Preview */}
+                            <div className="rounded-xl border border-gray-200 bg-white p-5">
+                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Search Preview</p>
+                                <div className="space-y-1">
+                                    <p className="text-lg text-blue-700 font-medium leading-snug truncate hover:underline cursor-default">
+                                        {effectiveTitle || 'Product Title'}
+                                    </p>
+                                    <p className="text-sm text-green-700 truncate">
+                                        badawiasimports.com/product/{effectiveSlug}
+                                    </p>
+                                    <p className="text-sm text-gray-600 line-clamp-2">
+                                        {effectiveDesc || 'Add a meta description to control how this product appears in search engine results.'}
+                                    </p>
+                                </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                    Page Title
-                                </label>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-semibold text-gray-900">
+                                        Page Title
+                                    </label>
+                                    <span className={`text-xs font-medium ${titleLen > 60 ? 'text-red-500' : titleLen > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                                        {titleLen}/60
+                                    </span>
+                                </div>
                                 <input
                                     type="text"
                                     value={seoTitle}
                                     onChange={(e) => setSeoTitle(e.target.value)}
                                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-600 focus:border-gray-600"
-                                    placeholder="Seo friendly title"
+                                    placeholder={productName ? `${productName} | Badawia's Imports` : 'Enter a page title'}
                                 />
-                                <p className="text-sm text-gray-500 mt-2">60 characters recommended</p>
+                                {titleLen > 60 && (
+                                    <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
+                                        <i className="ri-alert-line"></i>
+                                        Title may be truncated in search results. Keep it under 60 characters.
+                                    </p>
+                                )}
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                    Meta Description
-                                </label>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-semibold text-gray-900">
+                                        Meta Description
+                                    </label>
+                                    <span className={`text-xs font-medium ${descLen > 160 ? 'text-red-500' : descLen > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                                        {descLen}/160
+                                    </span>
+                                </div>
                                 <textarea
                                     rows={3}
-                                    maxLength={500}
                                     value={metaDescription}
                                     onChange={(e) => setMetaDescription(e.target.value)}
                                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-600 focus:border-gray-600 resize-none"
-                                    placeholder="Seo friendly description"
+                                    placeholder={description ? description.slice(0, 100) + '...' : 'Brief description for search engines'}
                                 />
-                                <p className="text-sm text-gray-500 mt-2">160 characters recommended</p>
+                                {descLen > 160 && (
+                                    <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
+                                        <i className="ri-alert-line"></i>
+                                        Description may be truncated. Keep it under 160 characters for best results.
+                                    </p>
+                                )}
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                    URL Slug
-                                </label>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-semibold text-gray-900">
+                                        URL Slug
+                                    </label>
+                                    {slugManuallyEdited && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSlugManuallyEdited(false);
+                                                setUrlSlug(generateSlug(productName || ''));
+                                            }}
+                                            className="text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer flex items-center gap-1"
+                                        >
+                                            <i className="ri-refresh-line"></i>
+                                            Reset to auto
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="flex items-center">
-                                    <span className="text-gray-600 bg-gray-100 px-4 py-3 border-2 border-r-0 border-gray-300 rounded-l-lg">
-                                        store.com/product/
+                                    <span className="text-gray-500 bg-gray-100 px-4 py-3 border-2 border-r-0 border-gray-300 rounded-l-lg text-sm whitespace-nowrap">
+                                        badawiasimports.com/product/
                                     </span>
                                     <input
                                         type="text"
                                         value={urlSlug}
-                                        onChange={(e) => setUrlSlug(e.target.value)}
-                                        className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-r-lg focus:ring-2 focus:ring-gray-600 focus:border-gray-600"
+                                        onChange={(e) => {
+                                            const sanitized = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+                                            setUrlSlug(sanitized);
+                                            setSlugManuallyEdited(true);
+                                        }}
+                                        className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-r-lg focus:ring-2 focus:ring-gray-600 focus:border-gray-600 font-mono text-sm"
                                         placeholder="product-slug"
                                     />
                                 </div>
+                                {!slugManuallyEdited && (
+                                    <p className="text-xs text-gray-400 mt-1.5">Auto-generated from product name. Edit to customize.</p>
+                                )}
                             </div>
 
                             <div>
                                 <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                    Keywords
+                                    Keywords / Tags
                                 </label>
                                 <input
                                     type="text"
                                     value={keywords}
                                     onChange={(e) => setKeywords(e.target.value)}
                                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-600 focus:border-gray-600"
-                                    placeholder="keyword1, keyword2"
+                                    placeholder="handbag, leather, luxury, Ghana"
                                 />
-                                <p className="text-sm text-gray-500 mt-2">Separate keywords with commas</p>
+                                <p className="text-sm text-gray-500 mt-1.5">Separate keywords with commas — helps with search and filtering</p>
                             </div>
                         </div>
-                    )}
+                        );
+                    })()}
                 </div>
             </div>
         </div>

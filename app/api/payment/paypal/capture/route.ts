@@ -28,17 +28,22 @@ async function getPayPalAccessToken(): Promise<string> {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const token = searchParams.get('token'); // PayPal order ID
+    // NOTE: PayPal sends back ?token= as the PayPal order ID in their return URL.
+    // To avoid colliding with our own lookup token, the storefront uses a distinct
+    // ?lookup= param. PayPal's "token" must keep its name though.
+    const paypalOrderId = searchParams.get('token'); // PayPal order ID
     const orderNumber = searchParams.get('order');
+    const lookupToken = searchParams.get('lookup') || '';
+    const tokenSuffix = lookupToken ? `&token=${encodeURIComponent(lookupToken)}` : '';
 
-    if (!token || !orderNumber) {
+    if (!paypalOrderId || !orderNumber) {
       return NextResponse.redirect(new URL('/?error=missing_params', req.url));
     }
 
     const accessToken = await getPayPalAccessToken();
     const base = process.env.PAYPAL_API_BASE_URL || 'https://api-m.sandbox.paypal.com';
 
-    const captureRes = await fetch(`${base}/v2/checkout/orders/${token}/capture`, {
+    const captureRes = await fetch(`${base}/v2/checkout/orders/${paypalOrderId}/capture`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -70,12 +75,12 @@ export async function GET(req: Request) {
 
     if (order.payment_status === 'paid') {
       const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).replace(/\/+$/, '');
-      return NextResponse.redirect(new URL(`${baseUrl}/order-success?order=${encodeURIComponent(orderNumber)}`, req.url));
+      return NextResponse.redirect(new URL(`${baseUrl}/order-success?order=${encodeURIComponent(orderNumber)}${tokenSuffix}`, req.url));
     }
 
     const { data: orderJson, error: updateError } = await supabase.rpc('mark_order_paid', {
       order_ref: orderNumber,
-      moolre_ref: `paypal:${token}`,
+      moolre_ref: `paypal:${paypalOrderId}`,
     });
 
     if (updateError) {
@@ -103,7 +108,7 @@ export async function GET(req: Request) {
     }
 
     const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).replace(/\/+$/, '');
-    return NextResponse.redirect(new URL(`${baseUrl}/order-success?order=${encodeURIComponent(orderNumber)}&payment_success=true`, req.url));
+    return NextResponse.redirect(new URL(`${baseUrl}/order-success?order=${encodeURIComponent(orderNumber)}&payment_success=true${tokenSuffix}`, req.url));
   } catch (error) {
     console.error('[PayPal Capture] Error:', error);
     return NextResponse.redirect(new URL('/?error=paypal_verify', req.url));

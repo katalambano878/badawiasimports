@@ -33,8 +33,8 @@ const mockOrders = [
 export default function ReturnsPortalPage() {
   const router = useRouter();
   const { getSetting } = useCMS();
-  const contactEmail = getSetting('contact_email') || 'maame890@gmail.com';
-  const contactPhone = getSetting('contact_phone') || '054 930 7736';
+  const contactEmail = getSetting('contact_email') || '';
+  const contactPhone = getSetting('contact_phone') || '';
   const whatsappHref = toWhatsAppNumber(contactPhone) ? `https://wa.me/${toWhatsAppNumber(contactPhone)}` : '#';
 
   const [step, setStep] = useState(1);
@@ -96,7 +96,7 @@ export default function ReturnsPortalPage() {
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex items-center flex-1">
                   <div className={`w-10 h-10 flex items-center justify-center rounded-full font-bold ${
-                    i <= step ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-500'
+                    i <= step ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
                   }`}>
                     {i < step ? <i className="ri-check-line"></i> : i}
                   </div>
@@ -151,7 +151,7 @@ export default function ReturnsPortalPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gray-900 hover:bg-gray-800 text-white py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  className="w-full bg-primary hover:bg-primary text-white py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   {isLoading ? 'Finding Order...' : 'Find Order'}
                 </button>
@@ -163,7 +163,7 @@ export default function ReturnsPortalPage() {
                   <div className="text-sm text-blue-700">
                     <p className="font-semibold mb-1">Return Policy Highlights</p>
                     <ul className="space-y-1">
-                      <li>• 24-hour return policy: request within 24 hours of receipt if faulty, damaged, or not what you requested (hygiene reasons—no refunds for other reasons)</li>
+                      <li>• Please review the Refund Policy for current return eligibility, approved reasons, and timelines</li>
                       <li>• Item must be unworn/unused, with tags, in original packaging; receipt or proof of purchase required</li>
                       <li>• Contact us first on WhatsApp <a href={whatsappHref} className="underline font-medium" target="_blank" rel="noopener noreferrer">{contactPhone}</a> or <a href={`mailto:${contactEmail}`} className="underline font-medium">{contactEmail}</a>—returns sent without requesting first are not accepted</li>
                       <li>• No returns on custom/personalized items, personal care/beauty, sale items, or gift cards</li>
@@ -199,7 +199,7 @@ export default function ReturnsPortalPage() {
                         className="mt-1 w-5 h-5 text-gray-900 rounded border-gray-300 focus:ring-gray-600"
                       />
                       <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover object-top" />
+                        <img src={item.image} alt={item.name} loading="lazy" decoding="async" className="w-full h-full object-cover object-top" />
                       </div>
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900 mb-1">{item.name}</p>
@@ -277,7 +277,7 @@ export default function ReturnsPortalPage() {
                 <button
                   onClick={() => setStep(3)}
                   disabled={selectedItems.length === 0 || !selectedItems.every(id => returnReasons[id])}
-                  className="flex-1 py-4 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  className="flex-1 py-4 bg-primary hover:bg-primary text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   Continue
                 </button>
@@ -340,7 +340,7 @@ export default function ReturnsPortalPage() {
                 <button
                   onClick={handleSubmitReturn}
                   disabled={isLoading}
-                  className="flex-1 py-4 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  className="flex-1 py-4 bg-primary hover:bg-primary text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   {isLoading ? 'Submitting...' : 'Submit Return Request'}
                 </button>

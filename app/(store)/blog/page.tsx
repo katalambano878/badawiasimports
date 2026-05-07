@@ -1,15 +1,15 @@
-﻿import Link from 'next/link';
+import Link from 'next/link';
 
 export default function BlogPage() {
   const featuredPost = {
     id: '1',
-    title: 'The Ultimate Guide to Online Shopping in Ghana',
-    excerpt: 'Everything you need to know about safe, convenient online shopping in Ghana. From payment methods to delivery options, we cover it all.',
+    title: 'The Ultimate Guide to Online Shopping',
+    excerpt: 'Everything you need to know about safe, convenient online shopping. From payment methods to delivery options, we cover it all.',
     image: 'https://placehold.co/400x400?text=Sample',
     category: 'Shopping Tips',
     date: 'December 15, 2024',
     readTime: '8 min read',
-    author: 'Ama Osei'
+    author: 'Store Team'
   };
 
   const posts = [
@@ -21,7 +21,7 @@ export default function BlogPage() {
       category: 'Home & Living',
       date: 'December 12, 2024',
       readTime: '6 min read',
-      author: 'Yaw Darko'
+      author: 'Store Team'
     },
     {
       id: '3',
@@ -31,17 +31,17 @@ export default function BlogPage() {
       category: 'Buying Guide',
       date: 'December 10, 2024',
       readTime: '7 min read',
-      author: 'Kwame Mensah'
+      author: 'Store Team'
     },
     {
       id: '1',
-      title: 'The Ultimate Guide to Online Shopping in Ghana',
-      excerpt: 'Everything you need to know about safe, convenient online shopping in Ghana. From payment methods to delivery options.',
+      title: 'The Ultimate Guide to Online Shopping',
+      excerpt: 'Everything you need to know about safe, convenient online shopping. From payment methods to delivery options.',
       image: 'https://placehold.co/400x400?text=Sample',
       category: 'Shopping Tips',
       date: 'December 15, 2024',
       readTime: '8 min read',
-      author: 'Ama Osei'
+      author: 'Store Team'
     }
   ];
 
@@ -78,7 +78,7 @@ export default function BlogPage() {
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute top-6 left-6">
-                  <span className="bg-gray-900 text-white px-4 py-2 rounded-full text-sm font-medium">
+                  <span className="bg-primary text-white px-4 py-2 rounded-full text-sm font-medium">
                     Featured
                   </span>
                 </div>
@@ -163,7 +163,7 @@ export default function BlogPage() {
                 <button className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                   <i className="ri-arrow-left-s-line text-gray-600"></i>
                 </button>
-                <button className="w-10 h-10 flex items-center justify-center bg-gray-900 text-white rounded-lg cursor-pointer">
+                <button className="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-lg cursor-pointer">
                   1
                 </button>
                 <button className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
@@ -210,7 +210,7 @@ export default function BlogPage() {
                   />
                   <button
                     type="submit"
-                    className="w-full bg-gray-900 text-white py-3 rounded-xl font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
+                    className="w-full bg-primary text-white py-3 rounded-xl font-medium hover:bg-primary transition-colors whitespace-nowrap"
                   >
                     Subscribe
                   </button>
@@ -220,7 +220,7 @@ export default function BlogPage() {
               <div className="mt-8 pt-8 border-t border-gray-200">
                 <h3 className="text-xl font-bold text-gray-900 mb-6">Popular Tags</h3>
                 <div className="flex flex-wrap gap-2">
-                  {['Shopping', 'Quality', 'Reviews', 'Ghana', 'Delivery', 'Tips', 'Home', 'Style'].map((tag, index) => (
+                  {['Shopping', 'Quality', 'Reviews', 'Delivery', 'Tips', 'Home', 'Style'].map((tag, index) => (
                     <button
                       key={index}
                       className="px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 hover:border-gray-600 hover:text-gray-900 transition-colors cursor-pointer whitespace-nowrap"

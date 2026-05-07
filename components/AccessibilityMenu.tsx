@@ -25,6 +25,7 @@ export default function AccessibilityMenu() {
   useEffect(() => {
     localStorage.setItem('accessibilitySettings', JSON.stringify(settings));
     applySettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- applySettings reads settings
   }, [settings]);
 
   const applySettings = () => {
@@ -85,7 +86,7 @@ export default function AccessibilityMenu() {
     <>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed left-0 top-1/2 -translate-y-1/2 bg-gray-900 hover:bg-gray-800 text-white p-3 rounded-r-lg shadow-lg z-[9997] transition-all"
+        className="fixed left-0 top-1/2 -translate-y-1/2 bg-primary-dark hover:bg-primary text-white p-3 rounded-r-lg shadow-lg z-[9997] transition-all"
         aria-label="Accessibility Menu"
       >
         <i className="ri-accessibility-line text-2xl"></i>
@@ -213,7 +214,7 @@ export default function AccessibilityMenu() {
                   <button
                     onClick={() => setSettings({ ...settings, readableFont: !settings.readableFont })}
                     className={`w-12 h-6 rounded-full flex items-center px-1 transition-colors ${
-                      settings.readableFont ? 'bg-gray-900' : 'bg-gray-300'
+                      settings.readableFont ? 'bg-primary' : 'bg-gray-300'
                     }`}
                   >
                     <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
@@ -227,7 +228,7 @@ export default function AccessibilityMenu() {
                   <button
                     onClick={() => setSettings({ ...settings, hideImages: !settings.hideImages })}
                     className={`w-12 h-6 rounded-full flex items-center px-1 transition-colors ${
-                      settings.hideImages ? 'bg-gray-900' : 'bg-gray-300'
+                      settings.hideImages ? 'bg-primary' : 'bg-gray-300'
                     }`}
                   >
                     <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
@@ -241,7 +242,7 @@ export default function AccessibilityMenu() {
                   <button
                     onClick={() => setSettings({ ...settings, highlightLinks: !settings.highlightLinks })}
                     className={`w-12 h-6 rounded-full flex items-center px-1 transition-colors ${
-                      settings.highlightLinks ? 'bg-gray-900' : 'bg-gray-300'
+                      settings.highlightLinks ? 'bg-primary' : 'bg-gray-300'
                     }`}
                   >
                     <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${

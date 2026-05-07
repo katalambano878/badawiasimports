@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase';
 function AccountContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab') || 'profile';
+  const initialTab = searchParams?.get('tab') || 'profile';
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [user, setUser] = useState<any>(null);
@@ -18,7 +18,7 @@ function AccountContent() {
 
   // Update active tab when URL param changes
   useEffect(() => {
-    const tab = searchParams.get('tab');
+    const tab = searchParams?.get('tab');
     if (tab && ['profile', 'orders', 'addresses', 'security'].includes(tab)) {
       setActiveTab(tab);
     }
@@ -224,7 +224,7 @@ function AccountContent() {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium whitespace-nowrap transition-all border shadow-sm ${activeTab === tab.id
-                      ? 'bg-gray-900 text-white border-gray-900 ring-2 ring-gray-100'
+                      ? 'bg-primary text-white border-gray-900 ring-2 ring-gray-100'
                       : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                       }`}
                   >
@@ -294,7 +294,7 @@ function AccountContent() {
                             type="tel"
                             value={profileData.phone}
                             onChange={e => setProfileData({ ...profileData, phone: e.target.value })}
-                            placeholder="+233 XX XXX XXXX"
+                            placeholder="e.g. 0539 781 532"
                             className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-gray-50 focus:border-gray-600 transition-all bg-gray-50 focus:bg-white"
                           />
                         </div>
@@ -304,7 +304,7 @@ function AccountContent() {
                         <button
                           type="submit"
                           disabled={profileLoading}
-                          className="px-8 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold transition-all shadow-lg shadow-gray-900/20 active:scale-95 disabled:opacity-50 disabled:shadow-none"
+                          className="px-8 py-3 bg-primary hover:bg-primary text-white rounded-xl font-semibold transition-all shadow-lg shadow-gray-900/20 active:scale-95 disabled:opacity-50 disabled:shadow-none"
                         >
                           {profileLoading ? 'Saving Info...' : 'Save Profile Information'}
                         </button>
@@ -352,7 +352,7 @@ function AccountContent() {
                         <button
                           type="submit"
                           disabled={passwordLoading}
-                          className="px-8 py-3 bg-gray-900 hover:bg-black text-white rounded-xl font-semibold transition-all shadow-lg shadow-gray-900/10 active:scale-95 disabled:opacity-50 disabled:shadow-none"
+                          className="px-8 py-3 bg-primary hover:bg-primary text-white rounded-xl font-semibold transition-all shadow-lg shadow-gray-900/10 active:scale-95 disabled:opacity-50 disabled:shadow-none"
                         >
                           {passwordLoading ? 'Updating...' : 'Update Password'}
                         </button>

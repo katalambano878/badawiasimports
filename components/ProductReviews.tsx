@@ -157,7 +157,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
           <p className="text-gray-500 mb-4">No reviews yet. Be the first to review!</p>
           <button
             onClick={() => setShowReviewForm(true)}
-            className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+            className="bg-primary hover:bg-primary text-white px-6 py-2 rounded-lg font-semibold transition-colors"
           >
             Write a Review
           </button>
@@ -208,7 +208,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
               <button
                 onClick={() => setFilter('all')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${filter === 'all'
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-primary text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
               >
@@ -220,7 +220,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
             {!showReviewForm && (
               <button
                 onClick={() => setShowReviewForm(true)}
-                className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap"
+                className="bg-primary hover:bg-primary text-white px-6 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap"
               >
                 Write a Review
               </button>
@@ -288,7 +288,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
             <button
               type="submit"
               disabled={isSubmitting || !user}
-              className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap disabled:opacity-50"
+              className="bg-primary hover:bg-primary text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap disabled:opacity-50"
             >
               {isSubmitting ? 'Submitting...' : 'Submit Review'}
             </button>

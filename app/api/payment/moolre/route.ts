@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(req: Request) {
     try {
@@ -21,34 +26,73 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { orderId, amount, customerEmail } = body;
+        const { orderId, customerEmail } = body;
 
-        if (!orderId || !amount) {
-            return NextResponse.json({ success: false, message: 'Missing orderId or amount' }, { status: 400 });
+        if (!orderId) {
+            return NextResponse.json({ success: false, message: 'Missing orderId' }, { status: 400 });
         }
 
-        // Ensure environment variables are set
         if (!process.env.MOOLRE_API_USER || !process.env.MOOLRE_API_PUBKEY || !process.env.MOOLRE_ACCOUNT_NUMBER) {
             console.error('Missing Moolre credentials');
-            return NextResponse.json({ success: false, message: 'Payment gateway configuration error' }, { status: 500 });
+            return NextResponse.json({ success: false, message: 'Mobile Money is not configured. Please add MOOLRE_API_USER, MOOLRE_API_PUBKEY and MOOLRE_ACCOUNT_NUMBER in your environment or contact the store.' }, { status: 500 });
         }
 
         const requestUrl = new URL(req.url);
-        // Remove trailing slash to prevent double-slash in URLs (e.g. //api/...)
         const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || requestUrl.origin).replace(/\/+$/, '');
 
-        // Generate a unique external reference for Moolre
-        // Append a retry suffix so re-payments don't clash with previous attempts
         const uniqueRef = `${orderId}-R${Date.now()}`;
 
-        // Moolre Payload
+        // Always source the amount from the database — never trust client-supplied amount.
+        // Also pull the lookup_token so we can append it to the redirect URL (the storefront
+        // pages need it to read the order back without an open RLS policy).
+        const { data: existingOrder, error: orderFetchError } = await supabase
+            .from('orders')
+            .select('order_number, payment_status, metadata, total')
+            .eq('order_number', orderId)
+            .single();
+
+        if (orderFetchError || !existingOrder) {
+            return NextResponse.json({ success: false, message: 'Order not found for payment initialization' }, { status: 404 });
+        }
+
+        if (existingOrder.payment_status === 'paid') {
+            return NextResponse.json({ success: false, message: 'This order is already paid.' }, { status: 400 });
+        }
+
+        const amount = Number(existingOrder.total);
+        if (!Number.isFinite(amount) || amount <= 0) {
+            return NextResponse.json({ success: false, message: 'Invalid order total' }, { status: 400 });
+        }
+
+        const mergedMetadata = {
+            ...(existingOrder.metadata || {}),
+            payment_method: 'moolre',
+            moolre_externalref: uniqueRef,
+            payment_attempted_at: new Date().toISOString()
+        };
+
+        const { error: orderUpdateError } = await supabase
+            .from('orders')
+            .update({
+                payment_status: 'pending',
+                metadata: mergedMetadata
+            })
+            .eq('order_number', orderId);
+
+        if (orderUpdateError) {
+            return NextResponse.json({ success: false, message: `Failed to prepare payment: ${orderUpdateError.message}` }, { status: 500 });
+        }
+
+        const lookupToken = (existingOrder.metadata as { lookup_token?: string } | null)?.lookup_token || '';
+        const tokenSuffix = lookupToken ? `&token=${encodeURIComponent(lookupToken)}` : '';
+
         const payload = {
             type: 1,
-            amount: amount.toString(), // Ensure string
+            amount: amount.toString(),
             email: process.env.MOOLRE_MERCHANT_EMAIL || 'admin@example.com',
             externalref: uniqueRef,
             callback: `${baseUrl}/api/payment/moolre/callback`,
-            redirect: `${baseUrl}/order-success?order=${orderId}&payment_success=true`,
+            redirect: `${baseUrl}/order-success?order=${orderId}&payment_success=true${tokenSuffix}`,
             reusable: "0",
             currency: "GHS",
             accountnumber: process.env.MOOLRE_ACCOUNT_NUMBER,

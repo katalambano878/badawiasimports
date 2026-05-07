@@ -47,6 +47,8 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (isInitialized) {
             localStorage.setItem('wishlist', JSON.stringify(wishlist));
+            // Keep header/mobile badge counts in sync with context changes
+            window.dispatchEvent(new Event('wishlistUpdated'));
         }
     }, [wishlist, isInitialized]);
 

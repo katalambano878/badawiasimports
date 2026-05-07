@@ -165,7 +165,7 @@ export default function PrivacyPage() {
 
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-gray-50 border border-gray-200 p-6 rounded-xl">
-                <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center mb-4">
+                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center mb-4">
                   <i className="ri-lock-line text-white text-lg"></i>
                 </div>
                 <h3 className="font-bold text-gray-900 mb-2">Encryption</h3>
@@ -175,7 +175,7 @@ export default function PrivacyPage() {
               </div>
 
               <div className="bg-gray-50 border border-gray-200 p-6 rounded-xl">
-                <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center mb-4">
+                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center mb-4">
                   <i className="ri-shield-check-line text-white text-lg"></i>
                 </div>
                 <h3 className="font-bold text-gray-900 mb-2">Secure Storage</h3>
@@ -185,7 +185,7 @@ export default function PrivacyPage() {
               </div>
 
               <div className="bg-gray-50 border border-gray-200 p-6 rounded-xl">
-                <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center mb-4">
+                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center mb-4">
                   <i className="ri-bank-card-line text-white text-lg"></i>
                 </div>
                 <h3 className="font-bold text-gray-900 mb-2">Payment Security</h3>
@@ -195,7 +195,7 @@ export default function PrivacyPage() {
               </div>
 
               <div className="bg-gray-50 border border-gray-200 p-6 rounded-xl">
-                <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center mb-4">
+                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center mb-4">
                   <i className="ri-user-lock-line text-white text-lg"></i>
                 </div>
                 <h3 className="font-bold text-gray-900 mb-2">Access Controls</h3>
@@ -281,7 +281,7 @@ export default function PrivacyPage() {
             </div>
 
             <p className="text-gray-600 leading-relaxed">
-              To exercise any of these rights, please contact us at <a href="mailto:contact@example.com" className="text-gray-900 font-medium hover:underline">contact@example.com</a> or through your account settings. We will respond within 30 days.
+              To exercise any of these rights, please contact us at <a href="mailto:info@badawiasimports.com" className="text-gray-900 font-medium hover:underline">info@badawiasimports.com</a> or through your account settings. We will respond within 30 days.
             </p>
           </section>
 
@@ -336,7 +336,7 @@ export default function PrivacyPage() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">8. International Data Transfers</h2>
             <p className="text-gray-600 leading-relaxed">
-              Your information may be transferred to and processed in countries outside Ghana, including countries that may have different data protection laws. We ensure appropriate safeguards are in place to protect your information in accordance with this privacy policy.
+              Your information may be transferred to and processed in countries outside your residence, including countries that may have different data protection laws. We ensure appropriate safeguards are in place to protect your information in accordance with this privacy policy.
             </p>
           </section>
 
@@ -384,7 +384,7 @@ export default function PrivacyPage() {
                   <i className="ri-mail-line text-gray-900 text-xl mt-1"></i>
                   <div>
                     <p className="font-medium text-gray-900">Email</p>
-                    <a href="mailto:contact@example.com" className="text-gray-900 hover:underline">contact@example.com</a>
+                    <a href="mailto:info@badawiasimports.com" className="text-gray-900 hover:underline">info@badawiasimports.com</a>
                   </div>
                 </div>
 
@@ -392,7 +392,7 @@ export default function PrivacyPage() {
                   <i className="ri-phone-line text-gray-900 text-xl mt-1"></i>
                   <div>
                     <p className="font-medium text-gray-900">Phone</p>
-                    <a href="tel:" className="text-gray-900 hover:underline">Contact</a>
+                    <a href="tel:0539781532" className="text-gray-900 hover:underline">0539781532</a>
                   </div>
                 </div>
 
@@ -400,7 +400,7 @@ export default function PrivacyPage() {
                   <i className="ri-map-pin-line text-gray-900 text-xl mt-1"></i>
                   <div>
                     <p className="font-medium text-gray-900">Address</p>
-                    <p className="text-gray-600">Premium Store Ghana<br />East Legon, Accra<br />Ghana</p>
+                    <p className="text-gray-600">Tamale and Accra</p>
                   </div>
                 </div>
               </div>

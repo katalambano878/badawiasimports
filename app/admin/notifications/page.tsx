@@ -43,8 +43,8 @@ export default function NotificationsPage() {
 
             const recipients: any[] = [];
             for (const c of (customers || [])) {
-                const phones = [c.phone, c.secondary_phone].filter(Boolean).map((p: string) => normalizePhone(p));
-                const emails = [c.email, c.secondary_email].filter(Boolean).map((e: string) => e.toLowerCase().trim());
+                const phones = ([c.phone, c.secondary_phone].filter(Boolean) as string[]).map((p) => normalizePhone(p));
+                const emails = ([c.email, c.secondary_email].filter(Boolean) as string[]).map((e) => e.toLowerCase().trim());
 
                 // Pick first unique phone for this customer
                 const uniquePhone = phones.find(p => !seenPhones.has(p)) || null;
@@ -216,7 +216,7 @@ export default function NotificationsPage() {
                     <button
                         type="submit"
                         disabled={loading || (!form.channels.email && !form.channels.sms)}
-                        className="w-full bg-gray-900 text-white py-4 rounded-lg font-bold text-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        className="w-full bg-primary text-white py-4 rounded-lg font-bold text-lg hover:bg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                         {loading ? (
                             <span className="flex items-center justify-center">

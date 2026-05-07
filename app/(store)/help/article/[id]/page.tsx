@@ -12,12 +12,12 @@ import { getArticles, relatedArticles } from './help-articles-data';
 export default function ArticlePage() {
   const params = useParams();
   const { getSetting } = useCMS();
-  const contactEmail = getSetting('contact_email') || 'maame890@gmail.com';
-  const contactPhone = getSetting('contact_phone') || '054 930 7736';
+  const contactEmail = getSetting('contact_email') || '';
+  const contactPhone = getSetting('contact_phone') || '';
   const articles = getArticles(contactPhone, contactEmail);
   const articleId = params?.id as string | undefined;
   const article = (articleId && articles[articleId as keyof typeof articles]) || articles['1'];
-  
+
   const [wasHelpful, setWasHelpful] = useState<boolean | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
 
@@ -77,7 +77,7 @@ export default function ArticlePage() {
               <div className="flex space-x-4">
                 <button
                   onClick={() => handleHelpful(true)}
-                  className="flex-1 py-3 px-6 border-2 border-gray-700 text-gray-700 hover:bg-gray-700 hover:text-white rounded-lg font-semibold transition-colors whitespace-nowrap"
+                  className="flex-1 py-3 px-6 border-2 border-primary text-primary hover:bg-primary hover:text-white rounded-lg font-semibold transition-colors whitespace-nowrap"
                 >
                   <i className="ri-thumb-up-line mr-2"></i>
                   Yes, it was helpful
@@ -117,7 +117,7 @@ export default function ArticlePage() {
                     </p>
                     <Link
                       href="/support/ticket"
-                      className="inline-block bg-blue-700 hover:bg-blue-800 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap"
+                      className="inline-block bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap"
                     >
                       Contact Support
                     </Link>

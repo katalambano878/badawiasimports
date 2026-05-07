@@ -7,8 +7,8 @@ import Link from 'next/link';
 
 export default function CustomerDetailsPage() {
     const router = useRouter();
-    const params = useParams();
-    const customerId = params.id as string;
+    const params = useParams<{ id?: string }>();
+    const customerId = params?.id ?? '';
     
     const [customer, setCustomer] = useState<any>(null);
     const [orders, setOrders] = useState<any[]>([]);
@@ -18,6 +18,7 @@ export default function CustomerDetailsPage() {
         if (customerId) {
             fetchCustomerData();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch when customerId changes
     }, [customerId]);
 
     const fetchCustomerData = async () => {
@@ -96,7 +97,7 @@ export default function CustomerDetailsPage() {
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                     <p className="text-sm font-medium text-gray-500 mb-1">Last Order</p>
                     <p className="text-xl font-bold text-gray-900">
-                        {orders[0] ? new Date(orders[0].created_at).toLocaleDateString() : 'Never'}
+                        {orders[0]?.created_at ? new Date(orders[0].created_at).toLocaleDateString() : 'Never'}
                     </p>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
@@ -131,7 +132,7 @@ export default function CustomerDetailsPage() {
                                         <Link href={`/admin/orders/${order.id}`}>#{order.id.slice(0, 8)}</Link>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-600">
-                                        {new Date(order.created_at).toLocaleDateString()}
+                                        {new Date(order.created_at ?? 0).toLocaleDateString()}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize

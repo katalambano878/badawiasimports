@@ -1,99 +1,33 @@
 # Supabase Database Migrations
 
-This folder contains all SQL migration files for your e-commerce store database.
+This folder contains SQL migrations for the e-commerce store. The app uses **Supabase only** (auth, database, storage); there is no other backend or database.
 
-## 📁 Migration Files
+## 📁 Migration Files (run in this order)
 
-### 001_initial_schema.sql
-**Complete database schema** with all tables:
-- User profiles and addresses
-- Products, variants, and categories
-- Orders and order items
-- Cart and wishlist
-- Reviews and ratings
-- Coupons and loyalty program
-- Blog posts
-- Support tickets and returns
-- Notifications
-- All indexes for optimal performance
+1. **20260209000000_complete_schema.sql** – Full schema: extensions, enums, tables, functions, triggers, RLS policies, storage buckets. Run this first on a new project.
+2. **20260227000000_contact_submissions.sql** – Adds `contact_submissions` table for the store contact form. Run after the complete schema.
 
-### 002_row_level_security.sql
-**Security policies (RLS)** to protect user data:
-- Users can only access their own data
-- Public read access for products, categories, blog posts
-- Secure order and payment information
-- Protected personal information
-- Admin-only access where needed
+## 🚀 How to run
 
-### 003_functions_and_triggers.sql
-**Automated database operations**:
-- Auto-generate order/ticket/return numbers
-- Update timestamps automatically
-- Create user profiles on signup
-- Award loyalty points on orders
-- Update product inventory
-- Calculate order totals
-- Manage default addresses
-- Track coupon usage
+### Method 1: Supabase Dashboard (recommended)
 
-### 004_storage_buckets.sql
-**File storage configuration**:
-- Product images
-- User avatars
-- Review images
-- Blog images
-- Category images
-- Upload/download policies
-
-### 005_sample_data.sql (Optional)
-**Test data for development**:
-- Sample categories
-- Sample products
-- Sample coupons
-- Sample blog posts
-
-## 🚀 How to Use
-
-### Method 1: Supabase Dashboard (Recommended)
-
-1. **Connect to your Supabase project** (Dashboard or CLI)
-2. **Copy each SQL file content**
-3. **Go to Supabase Dashboard** → SQL Editor
-4. **Run migrations in order** (001 → 002 → 003 → 004 → 005)
-5. **Execute each file** one by one
+1. Open [Supabase Dashboard](https://supabase.com/dashboard) → your project → **SQL Editor**.
+2. Copy and run **20260209000000_complete_schema.sql** in full.
+3. Copy and run **20260227000000_contact_submissions.sql** in full.
 
 ### Method 2: Supabase CLI
 
 ```bash
-# Install Supabase CLI
-npm install -g supabase
-
-# Login to Supabase
-supabase login
-
-# Link your project
-supabase link --project-ref your-project-ref
-
-# Run migrations
+supabase link --project-ref YOUR_PROJECT_REF
 supabase db push
 ```
 
-### Method 3: Manual SQL Execution
+## ⚠️ Migration order
 
-1. **Open Supabase Dashboard**
-2. **Navigate to SQL Editor**
-3. **Copy and paste each file**
-4. **Run in correct order**
-
-## ⚠️ Important Notes
-
-### Migration Order
-**Must run in this exact order:**
-1. ✅ 001_initial_schema.sql (creates tables)
-2. ✅ 002_row_level_security.sql (adds security)
-3. ✅ 003_functions_and_triggers.sql (adds automation)
-4. ✅ 004_storage_buckets.sql (configures storage)
-5. ✅ 005_sample_data.sql (optional test data)
+1. ✅ 20260209000000_complete_schema.sql (creates all tables, RLS, triggers, storage)
+2. ✅ 20260227000000_contact_submissions.sql (contact form table)
+3. ✅ 20260315000000_admin_rls_products_categories.sql (admin CRUD policies for products/categories)
+4. ✅ 20260318000000_full_rls_verification_and_fixes.sql (comprehensive RLS audit — fixes store_modules gap, ensures all policies exist)
 
 ### Security
 - **RLS is enabled** on all tables
@@ -165,6 +99,7 @@ CREATE TRIGGER your_trigger
 - **return_requests** - Product returns
 - **return_items** - Items being returned
 - **notifications** - User notifications
+- **contact_submissions** - Contact form (migration 20260227000000)
 
 ## 🔐 Default Policies
 
@@ -190,12 +125,11 @@ CREATE TRIGGER your_trigger
 
 After running migrations:
 
-1. **Connect your Supabase project** (Dashboard or CLI)
-2. **Set up authentication** (email, Google, etc.)
-3. **Configure storage** for image uploads
-4. **Add products** via admin panel or API
-5. **Test RLS policies** with different users
-6. **Deploy edge functions** for checkout/payments
+1. Set env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+2. Grant yourself admin: in SQL Editor run  
+   `UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';`  
+   (or use the “How to grant admin access” section on `/admin/login`).
+3. Add products and content via the admin panel.
 
 ## 📚 Resources
 

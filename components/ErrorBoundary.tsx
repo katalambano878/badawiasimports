@@ -47,7 +47,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                 this.setState({ hasError: false, error: null });
                 window.location.reload();
               }}
-              className="inline-flex items-center px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-colors cursor-pointer"
+              className="inline-flex items-center px-6 py-3 bg-primary hover:bg-primary text-white rounded-lg font-semibold transition-colors cursor-pointer"
             >
               <i className="ri-refresh-line mr-2"></i>
               Refresh Page

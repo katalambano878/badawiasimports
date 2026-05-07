@@ -7,8 +7,8 @@ import AnimatedSection from '@/components/AnimatedSection';
 
 export default function ShippingPage() {
   const { getSetting } = useCMS();
-  const contactPhone = getSetting('contact_phone') || '054 930 7736';
-  const telHref = toWhatsAppNumber(contactPhone) ? `tel:+${toWhatsAppNumber(contactPhone)}` : '#';
+  const contactPhone = getSetting('contact_phone') || '';
+  const telHref = contactPhone && toWhatsAppNumber(contactPhone) ? `tel:+${toWhatsAppNumber(contactPhone)}` : '#';
 
   return (
     <div className="min-h-screen bg-white">
@@ -17,7 +17,7 @@ export default function ShippingPage() {
           <AnimatedSection className="max-w-3xl mx-auto text-center">
             <h1 className="text-5xl font-bold text-gray-900 mb-6">Shipping &amp; Delivery</h1>
             <p className="text-xl text-gray-600 leading-relaxed">
-              The Shipping Policy
+              Delivery rates for small and big packages across Accra and nearby areas.
             </p>
           </AnimatedSection>
         </div>
@@ -25,54 +25,50 @@ export default function ShippingPage() {
 
       <AnimatedSection direction="up" delay={0.1} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="max-w-3xl mx-auto">
-          <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 space-y-6 prose prose-gray max-w-none hover-lift">
-            <p className="text-gray-700 leading-relaxed">
-              We promise to dispatch <strong>all custom wig orders within 3 to 7 working days</strong>. For orders that do not require styling, it will be delivered <strong>same day if purchased before 9am</strong>.
-            </p>
-
+          <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 space-y-8 prose prose-gray max-w-none hover-lift">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mt-8 mb-2">Delivery fee</h2>
-              <ul className="list-disc pl-6 space-y-1 text-gray-700">
-                <li>Within any parts of Accra: GH₵35–50</li>
-                <li>Tema &amp; Kasoa: GH₵50–100</li>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Small packages</h2>
+              <ul className="list-none space-y-3 p-0 m-0">
+                <li className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-3 border-b border-gray-100">
+                  <span className="text-gray-800 font-medium">Within Accra</span>
+                  <span className="text-lg font-bold text-primary">GH₵ 50</span>
+                </li>
+                <li className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-3 border-b border-gray-100">
+                  <span className="text-gray-800 font-medium">Tema / Ashiaman</span>
+                  <span className="text-lg font-bold text-primary">GH₵ 100</span>
+                </li>
+                <li className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-3 border-b border-gray-100">
+                  <span className="text-gray-800 font-medium">Pokuase / Amasaman</span>
+                  <span className="text-lg font-bold text-primary">GH₵ 80</span>
+                </li>
+                <li className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-3">
+                  <span className="text-gray-800 font-medium">Station fee</span>
+                  <span className="text-lg font-bold text-primary">GH₵ 10</span>
+                </li>
               </ul>
             </div>
 
-            <p className="text-gray-700 leading-relaxed">
-              If your order is secured after 9am between Tuesday and Saturday, we will dispatch your order to you the next day with successful delivery before 5:30pm.
-            </p>
-
-            <p className="text-gray-700 leading-relaxed">
-              If you order after 9am but still want same-day delivery, then a <strong>Yango courier service</strong> will be used and the client bears the entire cost.
-            </p>
-
-            <p className="text-gray-700 leading-relaxed">
-              All orders secured on Sundays and Mondays will be processed and dispatched the following working day and delivered before 5:30pm.
-            </p>
-
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 mt-8 mb-2">Domestic deliveries outside Accra</h2>
-              <p className="text-gray-700 mb-2">
-                <strong>Kumasi, Cape Coast, Takoradi, Sunyani, Tamale:</strong> GH₵25 – Next Working Day
+            <div className="rounded-xl bg-primary/5 border border-primary/20 p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Big packages</h2>
+              <p className="text-gray-800 text-lg font-semibold m-0">
+                GH₵ 100 and above
               </p>
-              <p className="text-gray-700 leading-relaxed">
-                All orders will be packed and dispatched the next working day via domestic bus services such as VIP or Eagle Express. Your order will take 24 hours to arrive in your city, and you will be given a code or vehicle registration and contact number, in order to collect your package from the bus station in your city.
-              </p>
-              <p className="text-amber-800 font-semibold mt-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
-                Please note: Parcel office delivery fee is not included in the GH₵25.
+              <p className="text-gray-600 text-sm mt-2 mb-0">
+                Large or heavy items are charged at this rate (or higher as agreed). Contact us if you’re unsure which category applies.
               </p>
             </div>
 
-            <p className="text-gray-700 leading-relaxed">
-              If your package is not delivered on time for reasons beyond our control such as weather or external partnership issues, please call us immediately on{' '}
-              <a href={telHref} className="text-gray-900 font-semibold hover:underline">{contactPhone}</a> and we will do all we can to assist in finding an alternative suitable solution.
+            <p className="text-gray-700 leading-relaxed mb-0">
+              Rates apply per delivery where stated. For questions or custom arrangements, please contact us. {contactPhone && (
+                <>Call us at <a href={telHref} className="text-gray-900 font-semibold hover:underline">{contactPhone}</a>.</>
+              )}
             </p>
           </div>
 
           <div className="mt-12 text-center">
             <Link
               href="/contact"
-              className="inline-flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-full font-medium hover:bg-gray-800 transition-all hover:-translate-y-1 hover:shadow-lg"
+              className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-medium hover:bg-primary transition-all hover:-translate-y-1 hover:shadow-lg"
             >
               Contact us
             </Link>

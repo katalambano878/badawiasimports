@@ -36,12 +36,27 @@ export async function POST(request: Request) {
         // Use service role key to bypass RLS for server-side operations
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-        // Authentication requirements based on notification type
-        // 'campaign' requires admin/staff role
-        // 'order_updated', 'order_status' requires admin/staff role (status updates from admin)
-        // 'order_created', 'welcome', 'contact' can be triggered from checkout/forms
-        
-        const requiresAdminAuth = ['campaign', 'order_updated', 'order_status'].includes(type);
+        // Reject calls from off-site origins to block CSRF / spam attempts.
+        // /api/notifications is only meant to be called from our own pages or by service workers.
+        const origin = request.headers.get('origin') || '';
+        const referer = request.headers.get('referer') || '';
+        const allowedOriginPattern = /^https?:\/\/(?:www\.)?(badawiasimports\.com|localhost(?::\d+)?|127\.0\.0\.1(?::\d+)?|.*\.vercel\.app)/i;
+        const originOk = !origin || allowedOriginPattern.test(origin);
+        const refererOk = !referer || allowedOriginPattern.test(referer);
+        if (!originOk || !refererOk) {
+            console.warn('[Notifications] Cross-origin call rejected. Origin:', origin, 'Referer:', referer);
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        // Limit which types can be triggered by anyone with site access (browser tab on our domain).
+        // Admin-only types still require an explicit admin Bearer token below.
+        const customerTriggeredTypes = ['order_created', 'welcome', 'contact'];
+        const adminOnlyTypes = ['campaign', 'order_updated', 'order_status', 'payment_link'];
+        if (![...customerTriggeredTypes, ...adminOnlyTypes].includes(type)) {
+            return NextResponse.json({ error: 'Invalid notification type' }, { status: 400 });
+        }
+
+        const requiresAdminAuth = adminOnlyTypes.includes(type);
 
         if (requiresAdminAuth) {
             const authToken = request.headers.get('authorization')?.replace('Bearer ', '');

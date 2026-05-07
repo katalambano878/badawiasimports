@@ -33,12 +33,12 @@ export default function TestSmsPage() {
                             <input
                                 type="text"
                                 className="w-full border rounded-md p-2 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gray-600 outline-none"
-                                placeholder="e.g. 024XXXXXXX"
+                                placeholder="e.g. 0539781532"
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value)}
                             />
                             <p className="text-xs text-gray-500 mt-1">
-                                Try local format (024...) to test auto-formatting (+23324...)
+                                Enter number (e.g. 0539781532 or +233539781532)
                             </p>
                         </div>
 
@@ -59,7 +59,7 @@ export default function TestSmsPage() {
                             disabled={isPending}
                             className={`w-full py-2 px-4 rounded-md text-white font-medium transition-colors ${isPending
                                     ? 'bg-gray-400 cursor-not-allowed'
-                                    : 'bg-gray-700 hover:bg-gray-900'
+                                    : 'bg-gray-700 hover:bg-primary'
                                 }`}
                         >
                             {isPending ? 'Sending...' : 'Send SMS'}
@@ -71,7 +71,7 @@ export default function TestSmsPage() {
                     <h2 className="text-lg font-semibold mb-4">Response & Debug Log</h2>
 
                     {result ? (
-                        <div className="bg-gray-900 text-gray-100 p-4 rounded-md font-mono text-sm overflow-auto max-h-[500px]">
+                        <div className="bg-primary text-gray-100 p-4 rounded-md font-mono text-sm overflow-auto max-h-[500px]">
                             <pre>{JSON.stringify(result, null, 2)}</pre>
                         </div>
                     ) : (

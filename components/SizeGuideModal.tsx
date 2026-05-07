@@ -162,7 +162,7 @@ export default function SizeGuideModal({ isOpen, onClose, category = 'General' }
               <p className="text-sm text-gray-600 mb-4">
                 Still not sure about sizing? Our customer service team is here to help!
               </p>
-              <button className="px-6 py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors whitespace-nowrap">
+              <button className="px-6 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-primary transition-colors whitespace-nowrap">
                 Contact Support
               </button>
             </div>

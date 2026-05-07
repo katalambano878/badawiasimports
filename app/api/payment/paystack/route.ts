@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
  * Initialize a Paystack transaction.
@@ -24,23 +29,39 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { orderId, amount, customerEmail } = body;
+    const { orderId, customerEmail } = body;
 
-    if (!orderId || amount == null) {
-      return NextResponse.json({ success: false, message: 'Missing orderId or amount' }, { status: 400 });
+    if (!orderId) {
+      return NextResponse.json({ success: false, message: 'Missing orderId' }, { status: 400 });
     }
 
     const secretKey = process.env.PAYSTACK_SECRET_KEY;
     if (!secretKey) {
       console.error('Missing PAYSTACK_SECRET_KEY');
-      return NextResponse.json({ success: false, message: 'Payment gateway configuration error' }, { status: 500 });
+      return NextResponse.json({ success: false, message: 'Paystack is not configured. Please add PAYSTACK_SECRET_KEY in your environment or contact the store.' }, { status: 500 });
     }
+
+    const { data: existingOrder, error: orderFetchError } = await supabase
+      .from('orders')
+      .select('order_number, payment_status, total, metadata')
+      .eq('order_number', orderId)
+      .single();
+    if (orderFetchError || !existingOrder) {
+      return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
+    }
+    if (existingOrder.payment_status === 'paid') {
+      return NextResponse.json({ success: false, message: 'This order is already paid.' }, { status: 400 });
+    }
+    const amount = Number(existingOrder.total);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json({ success: false, message: 'Invalid order total' }, { status: 400 });
+    }
+    const lookupToken = (existingOrder.metadata as { lookup_token?: string } | null)?.lookup_token || '';
 
     const requestUrl = new URL(req.url);
     const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || requestUrl.origin).replace(/\/+$/, '');
 
-    // Paystack amount in pesewas (GHS subunit): 1 GHS = 100 pesewas
-    const amountInPesewas = Math.round(Number(amount) * 100);
+    const amountInPesewas = Math.round(amount * 100);
     if (amountInPesewas < 10) {
       return NextResponse.json({ success: false, message: 'Amount too small (min GH₵0.10)' }, { status: 400 });
     }
@@ -53,7 +74,7 @@ export async function POST(req: Request) {
       amount: amountInPesewas,
       currency: 'GHS',
       reference,
-      callback_url: `${baseUrl}/order-success?order=${encodeURIComponent(orderId)}&payment_success=true`,
+      callback_url: `${baseUrl}/order-success?order=${encodeURIComponent(orderId)}&payment_success=true${lookupToken ? `&token=${encodeURIComponent(lookupToken)}` : ''}`,
       metadata: {
         order_number: orderId,
         custom_fields: [

@@ -19,9 +19,9 @@ export const getArticles = (contactPhone: string, contactEmail: string) => ({
       
       <h3>Method 2: Track on Website</h3>
       <ol>
-        <li>Go to the <a href="/order-tracking">Order Tracking</a> page</li>
-        <li>Enter your order number and email address</li>
-        <li>Click "Track Order" to see your delivery status</li>
+        <li>Go to the <a href="/account?tab=orders">Order History</a> page</li>
+        <li>Select your order from the list</li>
+        <li>Use the action button to view status or continue payment if needed</li>
       </ol>
       
       <h3>Method 3: Track in Your Account</h3>
@@ -74,7 +74,7 @@ export const getArticles = (contactPhone: string, contactEmail: string) => ({
       
       <h2>Return Policy Details</h2>
       <ul>
-        <li>You have 24 hours after receiving your item to request a return (faulty, damaged, or not what you requested only—no other reasons due to hygiene)</li>
+        <li>Please review our Refund Policy for the latest return eligibility, approved reasons, and timelines</li>
         <li>Items must be unworn/unused, with tags, in original packaging; receipt or proof of purchase required</li>
         <li>Contact us first on WhatsApp ${contactPhone} or ${contactEmail}—returns sent without requesting first are not accepted</li>
         <li>No returns on custom/personalized items, personal care/beauty, sale items, or gift cards</li>

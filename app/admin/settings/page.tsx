@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { defaultSettings } from '@/context/CMSContext';
+import { applyCanonicalContact } from '@/lib/contact';
 import ImageUpload from '@/components/admin/ImageUpload';
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -70,6 +71,7 @@ export default function SettingsPage() {
             (data || []).forEach((row: any) => {
                 map[row.key] = typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
             });
+            applyCanonicalContact(map);
             setSettings(map);
         } catch (err) {
             console.error('Failed to load settings:', err);
@@ -96,10 +98,13 @@ export default function SettingsPage() {
             // Upsert each setting
             const entries = Object.entries(settings).filter(([_, v]) => v !== undefined);
             for (const [key, value] of entries) {
-                await supabase.from('store_settings').upsert(
+                const { error } = await supabase.from('store_settings').upsert(
                     { key, value, updated_at: new Date().toISOString() },
                     { onConflict: 'key' }
                 );
+                if (error) {
+                    throw new Error(`Failed saving "${key}": ${error.message}`);
+                }
             }
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
@@ -241,8 +246,8 @@ export default function SettingsPage() {
                                 <ImageUpload label="Favicon" description="Browser tab icon (ICO, PNG, SVG)" value={val('site_favicon')} onChange={(url) => set('site_favicon', url)} folder="branding" accept="image/x-icon,image/vnd.microsoft.icon,image/png,image/svg+xml" previewHeight={48} />
                             </div>
                             <div className="grid md:grid-cols-2 gap-5">
-                                <FieldGroup label="Currency Code"><input type="text" value={val('currency')} onChange={e => set('currency', e.target.value)} className={inputClass} placeholder="GHS" /></FieldGroup>
-                                <FieldGroup label="Currency Symbol"><input type="text" value={val('currency_symbol')} onChange={e => set('currency_symbol', e.target.value)} className={inputClass} placeholder="GH₵" /></FieldGroup>
+                                <FieldGroup label="Currency Code"><input type="text" value={val('currency')} onChange={e => set('currency', e.target.value)} className={inputClass} placeholder="USD" /></FieldGroup>
+                                <FieldGroup label="Currency Symbol"><input type="text" value={val('currency_symbol')} onChange={e => set('currency_symbol', e.target.value)} className={inputClass} placeholder="$" /></FieldGroup>
                             </div>
                         </SectionCard>
 
@@ -468,7 +473,7 @@ export default function SettingsPage() {
                 return (
                     <div className="space-y-6">
                         <SectionCard title="Search Engine Optimization" icon="ri-search-eye-line" description="Improve how your site appears in search results">
-                            <FieldGroup label="Site Title" description="The default <title> tag when no page-specific title exists"><input type="text" value={val('seo_title')} onChange={e => set('seo_title', e.target.value)} className={inputClass} placeholder="Luxury Strand Haven - Tagline" /></FieldGroup>
+                            <FieldGroup label="Site Title" description="The default <title> tag when no page-specific title exists"><input type="text" value={val('seo_title')} onChange={e => set('seo_title', e.target.value)} className={inputClass} placeholder="My Store - Your Tagline" /></FieldGroup>
                             <FieldGroup label="Meta Description" description="Default meta description shown in search results (max 160 characters)"><textarea rows={3} value={val('seo_description')} onChange={e => set('seo_description', e.target.value)} className={textareaClass} maxLength={160} /></FieldGroup>
                             <FieldGroup label="Keywords" description="Comma-separated keywords for search engines"><input type="text" value={val('seo_keywords')} onChange={e => set('seo_keywords', e.target.value)} className={inputClass} placeholder="keyword1, keyword2, keyword3" /></FieldGroup>
                             <ImageUpload label="Default OG Image" description="Image shown when your site is shared on social media (recommended: 1200×630)" value={val('seo_og_image')} onChange={(url) => set('seo_og_image', url)} folder="seo" previewHeight={100} />
@@ -555,7 +560,7 @@ export default function SettingsPage() {
                         disabled={saving}
                         className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium text-sm transition-all shadow-sm ${saved
                             ? 'bg-gray-100 text-gray-900 border border-gray-200'
-                            : 'bg-gray-900 text-white hover:bg-gray-800 active:scale-95'
+                            : 'bg-primary text-white hover:bg-primary active:scale-95'
                             } disabled:opacity-50`}
                     >
                         {saving ? (

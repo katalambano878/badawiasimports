@@ -9,6 +9,7 @@ interface Order {
   orderNumber: string;
   date: string;
   status: string;
+  paymentStatus: string;
   total: number;
   items: {
     id: string;
@@ -46,6 +47,7 @@ export default function OrderHistory() {
             orderNumber: order.order_number,
             date: order.created_at,
             status: order.status,
+            paymentStatus: order.payment_status || 'pending',
             total: order.total,
             items: order.order_items.map((item: any) => ({
               id: item.id,
@@ -82,6 +84,12 @@ export default function OrderHistory() {
     }
   };
 
+  const getOrderLabel = (order: Order) => {
+    if (order.paymentStatus !== 'paid') return 'Payment Pending';
+    if (order.status === 'shipped') return 'Packaged';
+    return order.status.replace('_', ' ').replace(/^\w/, (c: string) => c.toUpperCase());
+  };
+
   const handleReorder = (order: Order) => {
     // Implement reorder logic (add items back to cart)
     console.log('Reordering:', order);
@@ -110,7 +118,7 @@ export default function OrderHistory() {
         </div>
         <h3 className="text-lg font-semibold text-gray-900 mb-1">No orders yet</h3>
         <p className="text-gray-500 mb-6">Start shopping to see your orders here.</p>
-        <Link href="/shop" className="inline-block bg-gray-900 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors">
+        <Link href="/shop" className="inline-block bg-primary text-white px-6 py-2 rounded-lg font-medium hover:bg-primary transition-colors">
           Go to Shop
         </Link>
       </div>
@@ -153,7 +161,7 @@ export default function OrderHistory() {
                 </div>
                 <div>
                   <span className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap ${getStatusColor(order.status)}`}>
-                    {order.status === 'shipped' ? 'Packaged' : order.status.replace('_', ' ').replace(/^\w/, (c: string) => c.toUpperCase())}
+                    {getOrderLabel(order)}
                   </span>
                 </div>
               </div>
@@ -180,13 +188,23 @@ export default function OrderHistory() {
               </div>
 
               <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
-                <Link
-                  href={`/order-tracking?order=${order.orderNumber}`}
-                  className="px-4 py-2 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors whitespace-nowrap"
-                >
-                  <i className="ri-map-pin-line mr-2"></i>
-                  Track Order
-                </Link>
+                {order.paymentStatus !== 'paid' ? (
+                  <Link
+                    href={`/pay/${order.orderNumber}`}
+                    className="px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary transition-colors whitespace-nowrap"
+                  >
+                    <i className="ri-secure-payment-line mr-2"></i>
+                    Complete Payment
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/order-success?order=${order.orderNumber}`}
+                    className="px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary transition-colors whitespace-nowrap"
+                  >
+                    <i className="ri-map-pin-line mr-2"></i>
+                    View Order
+                  </Link>
+                )}
                 <button
                   onClick={() => handleReorder(order)}
                   className="px-4 py-2 border-2 border-gray-300 text-gray-900 rounded-lg font-semibold hover:bg-gray-50 transition-colors whitespace-nowrap"

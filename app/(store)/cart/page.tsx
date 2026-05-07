@@ -7,6 +7,7 @@ import CartCountdown from '@/components/CartCountdown';
 import AdvancedCouponSystem from '@/components/AdvancedCouponSystem';
 import { useCart } from '@/context/CartContext';
 import PageHero from '@/components/PageHero';
+import { HERO_IMAGES_OTHER_PAGES } from '@/lib/hero-images';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import AnimatedSection from '@/components/AnimatedSection';
 
@@ -60,7 +61,7 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <PageHero title="Shopping Cart" backgroundImage="/hero9.jpeg" />
+      <PageHero title="Shopping Cart" backgroundImage={HERO_IMAGES_OTHER_PAGES[6]} />
       <div className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         <CartCountdown />
@@ -74,7 +75,7 @@ export default function CartPage() {
               </div>
               <h2 className="text-3xl font-bold text-gray-900 mb-4">Your cart is empty</h2>
               <p className="text-gray-600 mb-8 text-lg">Looks like you&#39;t added anything to your cart yet</p>
-              <Link href="/shop" className="inline-block bg-gray-900 hover:bg-gray-900 text-white px-8 py-4 rounded-lg font-semibold transition-all hover:-translate-y-1 hover:shadow-lg whitespace-nowrap">
+              <Link href="/shop" className="inline-block bg-primary hover:bg-primary text-white px-8 py-4 rounded-lg font-semibold transition-all hover:-translate-y-1 hover:shadow-lg whitespace-nowrap">
                 Continue Shopping
               </Link>
             </div>
@@ -244,7 +245,7 @@ export default function CartPage() {
 
                     <Link
                       href="/checkout"
-                      className="block w-full bg-gray-900 hover:bg-gray-800 text-white py-4 rounded-lg font-semibold text-center transition-colors mt-6 mb-3 whitespace-nowrap"
+                      className="block w-full bg-primary hover:bg-primary text-white py-4 rounded-lg font-semibold text-center transition-colors mt-6 mb-3 whitespace-nowrap"
                     >
                       Proceed to Checkout
                     </Link>
@@ -260,10 +261,6 @@ export default function CartPage() {
                       <div className="flex items-center text-sm text-gray-600">
                         <i className="ri-shield-check-line text-gray-900 mr-2"></i>
                         <span>Secure checkout</span>
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <i className="ri-arrow-left-right-line text-gray-900 mr-2"></i>
-                        <span>24-hour returns for faulty/damaged/wrong items</span>
                       </div>
                       <div className="flex items-center text-sm text-gray-600">
                         <i className="ri-customer-service-line text-gray-900 mr-2"></i>

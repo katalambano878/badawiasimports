@@ -4,10 +4,12 @@ import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import "./globals.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://luxury-strand-haven.vercel.app';
-const siteName = 'Luxury Strand Haven';
-const siteTagline = 'Premium Wigs & Hair in Ghana';
-const siteDescription = 'Shop 100% human hair wigs, bundles, closures & frontals at Luxury Strand Haven. Custom luxury wigs, HD lace frontals, raw hair bundles, virgin hair & more. Fast delivery across Ghana. Ghana\'s premier premium hair destination.';
+const siteUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.badawiasimports.com').replace(/\/+$/, '');
+const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "BADAWIA'S IMPORTS";
+const siteTagline = 'Quality Imports Across Ghana';
+const siteDescription =
+  process.env.NEXT_PUBLIC_SITE_DESCRIPTION ||
+  "Shop quality imports at BADAWIA'S IMPORTS — Ghana's trusted source for premium products. Direct imports, fast delivery across Tamale & Accra. Wholesale & retail.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -17,33 +19,24 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   keywords: [
-    'luxury wigs Ghana',
-    'human hair wigs Ghana',
-    'custom wigs Ghana',
-    'lace front wigs Ghana',
-    'HD lace wigs Ghana',
-    'virgin hair bundles Ghana',
-    'hair extensions Ghana',
-    'closures and frontals Ghana',
-    'wig shop Ghana',
-    'premium hair Ghana',
-    'buy wigs online Ghana',
-    'raw hair bundles Ghana',
-    'braiding extensions Ghana',
-    'wig making classes Ghana',
-    'hair academy Ghana',
-    '100% human hair',
-    'Luxury Strand Haven',
-    'factory wigs Ghana',
-    'pre order wigs Ghana',
-    'hair bundles Accra',
-    'wigs Accra Ghana',
-    'best wig shop Ghana',
+    "Badawia's Imports",
+    'imports Ghana',
+    'online store Ghana',
+    'Tamale shopping',
+    'Accra shopping',
+    'quality imports',
+    'wholesale Ghana',
+    'direct imports China Ghana',
+    'buy online Ghana',
+    'Ghana e-commerce',
+    'premium products Ghana',
+    'Badawia Tamale',
+    'Badawia Accra',
   ],
   authors: [{ name: siteName, url: siteUrl }],
   creator: siteName,
   publisher: siteName,
-  category: 'Hair & Beauty',
+  category: 'Shopping',
   robots: {
     index: true,
     follow: true,
@@ -57,28 +50,30 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/logo.png', type: 'image/png' },
+      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
     ],
-    apple: '/logo.png',
-    shortcut: '/logo.png',
+    apple: { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    shortcut: '/favicon.ico',
   },
-  manifest: '/manifest.json',
+  manifest: '/manifest.webmanifest',
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || '',
   },
   openGraph: {
     type: 'website',
-    locale: 'en_GH',
+    locale: 'en',
     url: siteUrl,
     title: `${siteName} | ${siteTagline}`,
     description: siteDescription,
     siteName: siteName,
     images: [
       {
-        url: '/og-home.png',
+        url: '/opengraph-image',
         width: 1200,
         height: 630,
-        alt: `${siteName} — Premium Hair Collection Ghana`,
+        alt: `${siteName} — ${siteTagline}`,
         type: 'image/png',
       },
     ],
@@ -87,16 +82,17 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: `${siteName} | ${siteTagline}`,
     description: siteDescription,
-    images: [{ url: '/og-home.png', alt: `${siteName} — Premium Hair Collection Ghana` }],
-    creator: '@luxurystrandhaven',
-    site: '@luxurystrandhaven',
+    images: [{ url: '/opengraph-image', alt: `${siteName} — ${siteTagline}` }],
+    creator: '@badawias_imports1',
+    site: '@badawias_imports1',
   },
   alternates: {
     canonical: siteUrl,
   },
   other: {
-    'theme-color': '#000000',
-    'msapplication-TileColor': '#000000',
+    'theme-color': '#0D1B45',
+    'msapplication-TileColor': '#0D1B45',
+    'mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-status-bar-style': 'black-translucent',
     'apple-mobile-web-app-title': siteName,
@@ -115,7 +111,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-GH">
+    <html lang="en">
       <head>
         <link
           href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css"
@@ -123,40 +119,29 @@ export default function RootLayout({
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font -- App Router root layout: fonts apply to all pages */}
         <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
         {/* Organization Schema */}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
-          "name": "Luxury Strand Haven",
-          "alternateName": "LSH",
+          "name": siteName,
           "url": siteUrl,
-          "logo": { "@type": "ImageObject", "url": `${siteUrl}/logo.png`, "width": 1024, "height": 1024 },
-          "image": `${siteUrl}/og-home.png`,
-          "description": "Ghana's premier destination for 100% human hair wigs, bundles, closures & frontals. Custom luxury wigs, HD lace, raw hair and more.",
-          "foundingDate": "2020",
-          "addressCountry": "GH",
-          "address": { "@type": "PostalAddress", "addressCountry": "GH", "addressRegion": "Greater Accra" },
-          "contactPoint": [
-            { "@type": "ContactPoint", "contactType": "customer service", "availableLanguage": ["English"], "areaServed": "GH" }
-          ],
-          "sameAs": [
-            "https://www.instagram.com/luxurystrandhaven",
-            "https://www.facebook.com/luxurystrandhaven",
-            "https://www.tiktok.com/@luxurystrandhaven"
-          ],
-          "hasOfferCatalog": {
-            "@type": "OfferCatalog",
-            "name": "Premium Hair Collection",
-            "itemListElement": [
-              { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Custom Luxury Wigs" } },
-              { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Factory Wigs" } },
-              { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Raw Hair Bundles" } },
-              { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "100% Virgin Hair Bundles" } },
-              { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Closures & Frontals" } },
-              { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Braiding Extensions" } }
-            ]
+          "logo": { "@type": "ImageObject", "url": `${siteUrl}/logo.png`, "width": 512, "height": 512 },
+          "image": `${siteUrl}/og-image.png`,
+          "description": siteDescription,
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+233539781532",
+            "contactType": "customer service",
+            "availableLanguage": ["en"]
+          },
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Tamale",
+            "addressRegion": "Northern Region",
+            "addressCountry": "GH"
           }
         })}} />
 
@@ -164,10 +149,10 @@ export default function RootLayout({
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebSite",
-          "name": "Luxury Strand Haven",
+          "name": siteName,
           "url": siteUrl,
-          "description": "Ghana's premier premium hair destination — custom wigs, bundles, closures, frontals & hair academy.",
-          "inLanguage": "en-GH",
+          "description": siteDescription,
+          "inLanguage": "en",
           "potentialAction": {
             "@type": "SearchAction",
             "target": { "@type": "EntryPoint", "urlTemplate": `${siteUrl}/shop?search={search_term_string}` },
@@ -180,35 +165,53 @@ export default function RootLayout({
           "@context": "https://schema.org",
           "@type": "FAQPage",
           "mainEntity": [
-            { "@type": "Question", "name": "Do you sell 100% human hair wigs in Ghana?", "acceptedAnswer": { "@type": "Answer", "text": "Yes! Luxury Strand Haven specializes in 100% human hair wigs including custom luxury wigs, factory wigs, HD lace frontals and more. All our wigs are premium quality with fast delivery across Ghana." } },
-            { "@type": "Question", "name": "What types of hair bundles do you sell?", "acceptedAnswer": { "@type": "Answer", "text": "We sell raw hair bundles and 100% virgin hair bundles in various textures — straight, body wave, deep wave, kinky curly and more. All bundles are sourced from premium raw hair vendors." } },
-            { "@type": "Question", "name": "Do you offer custom wig making?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, we offer custom luxury wigs tailored to your specifications — length, density, lace type, color and more. Contact us to place a custom wig order." } },
-            { "@type": "Question", "name": "Do you ship across Ghana?", "acceptedAnswer": { "@type": "Answer", "text": "Yes! We offer fast delivery across all regions of Ghana including Accra, Kumasi, Tamale, Takoradi and more." } },
-            { "@type": "Question", "name": "Do you offer online hair classes?", "acceptedAnswer": { "@type": "Answer", "text": "Yes! Luxury Strand Haven's Hair Academia offers online classes in wig making, HD lace techniques, hair business management and professional hair styling." } },
-            { "@type": "Question", "name": "Do you sell closures and frontals?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, we sell a wide range of HD lace closures and frontals in both raw hair and 100% virgin hair. Available in 4x4, 5x5, 13x4, 13x6 and more." } }
+            { "@type": "Question", "name": "Where are you located?", "acceptedAnswer": { "@type": "Answer", "text": "BADAWIA'S IMPORTS operates in Tamale and Accra, Ghana." } },
+            { "@type": "Question", "name": "How can I contact the store?", "acceptedAnswer": { "@type": "Answer", "text": "Call or WhatsApp us on 0539781532, or reach us via the contact page." } },
+            { "@type": "Question", "name": "What payment methods do you accept?", "acceptedAnswer": { "@type": "Answer", "text": "See checkout for available payment options." } }
           ]
         })}} />
 
-        {/* LocalBusiness Schema */}
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Store",
-          "name": "Luxury Strand Haven",
-          "description": "Premium human hair wigs, bundles, closures & frontals. Custom wigs and hair academy. Fast delivery across Ghana.",
-          "url": siteUrl,
-          "image": `${siteUrl}/og-home.png`,
-          "logo": `${siteUrl}/logo.png`,
-          "priceRange": "GHS",
-          "currenciesAccepted": "GHS",
-          "paymentAccepted": "Mobile Money, Bank Transfer, Cash",
-          "address": { "@type": "PostalAddress", "addressCountry": "GH", "addressRegion": "Greater Accra" },
-          "areaServed": { "@type": "Country", "name": "Ghana" },
-          "hasMap": "https://www.google.com/maps/search/Luxury+Strand+Haven+Ghana",
-          "sameAs": [
-            "https://www.instagram.com/luxurystrandhaven",
-            "https://www.facebook.com/luxurystrandhaven"
-          ]
-        })}} />
+        {/* LocalBusiness / Store schema for Google My Business */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify((() => {
+          const phone = process.env.NEXT_PUBLIC_STORE_PHONE || '+233539781532';
+          const email = process.env.NEXT_PUBLIC_STORE_EMAIL;
+          const address = {
+            '@type': 'PostalAddress',
+            streetAddress: process.env.NEXT_PUBLIC_STORE_ADDRESS || 'Tamale & Accra',
+            addressLocality: process.env.NEXT_PUBLIC_STORE_CITY || 'Tamale',
+            addressRegion: process.env.NEXT_PUBLIC_STORE_REGION || 'Northern Region',
+            addressCountry: process.env.NEXT_PUBLIC_STORE_COUNTRY || 'GH',
+          };
+          const sameAs = [
+            process.env.NEXT_PUBLIC_FACEBOOK_URL,
+            process.env.NEXT_PUBLIC_INSTAGRAM_URL || 'https://instagram.com/badawias_imports',
+            process.env.NEXT_PUBLIC_TIKTOK_URL || 'https://tiktok.com/@badawias_imports1',
+            process.env.NEXT_PUBLIC_SNAPCHAT_URL || 'https://snapchat.com/add/badawia1234',
+            process.env.NEXT_PUBLIC_TWITTER_URL,
+          ].filter(Boolean);
+          return {
+            '@context': 'https://schema.org',
+            '@type': 'Store',
+            name: siteName,
+            description: siteDescription,
+            url: siteUrl,
+            image: `${siteUrl}/og-image.png`,
+            logo: `${siteUrl}/logo.png`,
+            priceRange: '$$',
+            currenciesAccepted: 'GHS',
+            paymentAccepted: 'Mobile Money, Card',
+            openingHours: 'Mo-Sa 08:00-18:00',
+            telephone: phone,
+            ...(email && { email }),
+            address,
+            sameAs,
+            potentialAction: {
+              '@type': 'OrderAction',
+              target: { '@type': 'EntryPoint', urlTemplate: `${siteUrl}/shop` },
+              deliveryMethod: 'http://purl.org/goodrelations/v1#DeliveryModeOwnFleet',
+            },
+          };
+        })())}} />
       </head>
 
       {/* Google Analytics */}
@@ -242,7 +245,7 @@ export default function RootLayout({
       <body className="antialiased font-sans overflow-x-hidden">
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[10000] focus:px-6 focus:py-3 focus:bg-gray-900 focus:text-white focus:rounded-lg focus:font-semibold focus:shadow-lg"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[10000] focus:px-6 focus:py-3 focus:bg-primary focus:text-white focus:rounded-lg focus:font-semibold focus:shadow-lg"
         >
           Skip to main content
         </a>

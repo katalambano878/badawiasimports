@@ -72,7 +72,7 @@ export default function VerifyPhonePage() {
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-lg p-8">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <i className="ri-phone-line text-3xl text-white"></i>
             </div>
             <h1 className="text-2xl font-bold mb-2">Verify Phone Number</h1>
@@ -107,7 +107,7 @@ export default function VerifyPhonePage() {
             <button
               onClick={handleVerify}
               disabled={code.join('').length !== 6 || isVerifying}
-              className="w-full py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed font-medium whitespace-nowrap"
+              className="w-full py-3 bg-primary text-white rounded-lg hover:bg-primary transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed font-medium whitespace-nowrap"
             >
               {isVerifying ? (
                 <>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, AreaChart, Area, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -25,11 +25,7 @@ export default function AnalyticsPage() {
     conversionGrowth: 0
   });
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, [timeRange]);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -121,6 +117,7 @@ export default function AnalyticsPage() {
       }
 
       orders?.forEach(o => {
+        if (!o.created_at) return;
         const dateKey = new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         if (salesMap[dateKey]) {
           salesMap[dateKey].sales += o.total || 0;
@@ -160,7 +157,11 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [timeRange]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   const COLORS = ['#374151', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -183,7 +184,7 @@ export default function AnalyticsPage() {
               <option value="90days">Last 90 Days</option>
               <option value="year">This Year</option>
             </select>
-            <button className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer flex items-center justify-center">
+            <button className="bg-primary hover:bg-primary text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer flex items-center justify-center">
               <i className="ri-download-line mr-2"></i>
               Export
             </button>
@@ -221,8 +222,8 @@ export default function AnalyticsPage() {
 
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 flex items-center justify-center bg-purple-100 rounded-lg">
-                <i className="ri-bar-chart-box-line text-2xl text-purple-700"></i>
+              <div className="w-12 h-12 flex items-center justify-center bg-primary-soft rounded-lg">
+                <i className="ri-bar-chart-box-line text-2xl text-primary"></i>
               </div>
             </div>
             <p className="text-sm text-gray-600 mb-1">Avg. Order Value</p>

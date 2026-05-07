@@ -1,51 +1,68 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { usePageTitle } from '@/hooks/usePageTitle';
 
 export default function PaymentPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50" />}>
+      <PaymentPageInner />
+    </Suspense>
+  );
+}
+
+function PaymentPageInner() {
   usePageTitle('Complete Payment');
-  const params = useParams();
+  const params = useParams<{ orderId?: string }>() as { orderId?: string } | null;
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const orderId = params.orderId as string;
+  const orderId = params?.orderId ?? '';
+  const lookupToken = searchParams?.get('token') || '';
+  const wasCanceled = searchParams?.get('canceled') === '1';
 
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'moolre' | 'stripe' | 'paypal'>('paystack');
+  const [paymentMethod] = useState<'moolre'>('moolre');
   const [error, setError] = useState<string | null>(null);
-  const [storeName, setStoreName] = useState('Luxury Strand Haven');
+  const [storeName, setStoreName] = useState(process.env.NEXT_PUBLIC_SITE_NAME || "BADAWIA'S IMPORTS");
 
   useEffect(() => {
-    // Fetch store name
     supabase.from('store_settings').select('value').eq('key', 'site_name').single()
       .then(({ data }) => { if (data?.value) setStoreName(typeof data.value === 'string' ? data.value : String(data.value)); });
 
     async function fetchOrder() {
+      if (!lookupToken) {
+        setError('Order access link is missing or expired. Please use the link from your confirmation email.');
+        setLoading(false);
+        return;
+      }
+
       try {
-        // Fetch order by ID (UUID) or order_number
-        let query = supabase
-          .from('orders')
-          .select('*')
-          .or(`id.eq.${orderId},order_number.eq.${orderId}`)
-          .single();
+        const res = await fetch('/api/orders/lookup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_number: orderId, token: lookupToken }),
+        });
 
-        const { data, error: fetchError } = await query;
-
-        if (fetchError || !data) {
-          setError('Order not found. Please check your link and try again.');
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          setError(errBody?.error === 'Invalid token'
+            ? 'This payment link is invalid or has expired. Please use the link from your confirmation email.'
+            : 'Order not found. Please check your link and try again.');
           setLoading(false);
           return;
         }
 
+        const { order: data } = await res.json();
         setOrder(data);
 
-        // If already paid, redirect to success page
         if (data.payment_status === 'paid') {
-          router.push(`/order-success?order=${data.order_number}`);
+          const tokenSuffix = lookupToken ? `&token=${encodeURIComponent(lookupToken)}` : '';
+          router.push(`/order-success?order=${data.order_number}${tokenSuffix}`);
           return;
         }
 
@@ -60,7 +77,12 @@ export default function PaymentPage() {
     if (orderId) {
       fetchOrder();
     }
-  }, [orderId, router]);
+  }, [orderId, lookupToken, router]);
+
+  useEffect(() => {
+    if (!wasCanceled || !order) return;
+    setError('Payment was cancelled. You can retry below when ready.');
+  }, [order, wasCanceled]);
 
   const handlePayNow = async () => {
     if (!order) return;
@@ -68,28 +90,36 @@ export default function PaymentPage() {
     setProcessing(true);
     setError(null);
 
-    const url = paymentMethod === 'paystack' ? '/api/payment/paystack' : paymentMethod === 'moolre' ? '/api/payment/moolre' : paymentMethod === 'stripe' ? '/api/payment/stripe' : '/api/payment/paypal';
+    const url = '/api/payment/moolre';
     try {
       const paymentRes = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId: order.order_number,
-          amount: order.total,
           customerEmail: order.email,
         }),
       });
 
-      const paymentResult = await paymentRes.json();
+      let paymentResult: { success?: boolean; message?: string; url?: string };
+      try {
+        paymentResult = await paymentRes.json();
+      } catch {
+        throw new Error(paymentRes.ok ? 'Invalid response from payment server.' : `Payment error (${paymentRes.status}). Please try again or contact support.`);
+      }
 
       if (!paymentResult.success) {
         throw new Error(paymentResult.message || 'Payment initialization failed');
       }
 
+      if (!paymentResult.url) {
+        throw new Error('No payment link received. Please try again or contact support.');
+      }
+
       window.location.href = paymentResult.url;
     } catch (err: any) {
       console.error('Payment error:', err);
-      setError(err.message || 'Failed to initialize payment. Please try again.');
+      setError(err?.message || 'Failed to initialize payment. Please try again or contact support.');
       setProcessing(false);
     }
   };
@@ -116,7 +146,7 @@ export default function PaymentPage() {
           <p className="text-gray-600 mb-6">{error}</p>
           <Link
             href="/"
-            className="inline-flex items-center px-6 py-3 bg-gray-700 hover:bg-gray-800 text-white rounded-lg font-semibold transition-colors"
+            className="inline-flex items-center px-6 py-3 bg-primary hover:bg-primary-dark text-white rounded-lg font-semibold transition-colors"
           >
             <i className="ri-home-line mr-2"></i>
             Go to Homepage
@@ -206,54 +236,15 @@ export default function PaymentPage() {
           </div>
         )}
 
-        {/* Payment method choice - all 4 options in one card */}
+        {/* Payment method - Mobile Money only */}
         <div className="mb-6 bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-base font-bold text-gray-900 mb-4">Choose payment method</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setPaymentMethod('paystack')}
-              className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-colors cursor-pointer ${paymentMethod === 'paystack' ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}
-            >
-              <i className="ri-bank-card-line text-2xl text-gray-700 flex-shrink-0"></i>
-              <div>
-                <span className="font-semibold text-gray-900 block">Paystack</span>
-                <span className="text-xs text-gray-600">Card & Mobile Money</span>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPaymentMethod('moolre')}
-              className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-colors cursor-pointer ${paymentMethod === 'moolre' ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}
-            >
-              <i className="ri-smartphone-line text-2xl text-gray-700 flex-shrink-0"></i>
-              <div>
-                <span className="font-semibold text-gray-900 block">Moolre</span>
-                <span className="text-xs text-gray-600">Mobile Money</span>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPaymentMethod('stripe')}
-              className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-colors cursor-pointer ${paymentMethod === 'stripe' ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}
-            >
-              <i className="ri-bank-card-2-line text-2xl text-gray-700 flex-shrink-0"></i>
-              <div>
-                <span className="font-semibold text-gray-900 block">Stripe</span>
-                <span className="text-xs text-gray-600">Card (Visa, Mastercard)</span>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPaymentMethod('paypal')}
-              className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-colors cursor-pointer ${paymentMethod === 'paypal' ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}
-            >
-              <i className="ri-paypal-line text-2xl text-gray-700 flex-shrink-0"></i>
-              <div>
-                <span className="font-semibold text-gray-900 block">PayPal</span>
-                <span className="text-xs text-gray-600">PayPal balance</span>
-              </div>
-            </button>
+          <h2 className="text-base font-bold text-gray-900 mb-4">Payment method</h2>
+          <div className="flex items-center gap-4 p-4 rounded-xl border-2 border-gray-900 bg-gray-50">
+            <i className="ri-smartphone-line text-2xl text-gray-700 flex-shrink-0"></i>
+            <div>
+              <span className="font-semibold text-gray-900 block">Mobile Money</span>
+              <span className="text-xs text-gray-600">MTN, Vodafone, AirtelTigo</span>
+            </div>
           </div>
         </div>
 
@@ -261,7 +252,7 @@ export default function PaymentPage() {
         <button
           onClick={handlePayNow}
           disabled={processing}
-          className="w-full bg-gray-700 hover:bg-gray-800 text-white py-4 rounded-xl font-semibold text-lg transition-colors disabled:opacity-70 flex items-center justify-center cursor-pointer"
+          className="w-full bg-primary hover:bg-primary-dark text-white py-4 rounded-xl font-semibold text-lg transition-colors disabled:opacity-70 flex items-center justify-center cursor-pointer"
         >
           {processing ? (
             <>
@@ -274,7 +265,9 @@ export default function PaymentPage() {
           ) : (
             <>
               <i className="ri-secure-payment-line mr-2"></i>
-              Pay GH₵ {order?.total?.toFixed(2)} with {paymentMethod === 'paystack' ? 'Paystack' : paymentMethod === 'moolre' ? 'Moolre' : paymentMethod === 'stripe' ? 'Stripe' : 'PayPal'}
+              {order?.payment_status === 'failed'
+                ? `Retry Payment (GH₵ ${order?.total?.toFixed(2)})`
+                : `Pay GH₵ ${order?.total?.toFixed(2)} with Mobile Money`}
             </>
           )}
         </button>
@@ -283,7 +276,7 @@ export default function PaymentPage() {
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-500 flex items-center justify-center">
             <i className="ri-lock-line mr-1"></i>
-            Secure payment · Paystack, Moolre, Stripe & PayPal
+            Secure payment · Mobile Money
           </p>
         </div>
 

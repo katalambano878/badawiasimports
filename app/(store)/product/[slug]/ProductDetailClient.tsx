@@ -10,6 +10,7 @@ import ProductReviews from '@/components/ProductReviews';
 import { StructuredData, generateProductSchema, generateBreadcrumbSchema } from '@/components/SEOHead';
 import { notFound } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
+import { useCMS } from '@/context/CMSContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
 
 // Map common color names to hex values for the swatch preview
@@ -40,6 +41,8 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
 
   const { addToCart } = useCart();
+  const { getSetting } = useCMS();
+  const isSaleActive = getSetting('store_wide_sale_enabled') === 'true';
 
   useEffect(() => {
     async function fetchProduct() {
@@ -154,6 +157,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                 slug: p.slug,
                 name: p.name,
                 price: p.price,
+                salePrice: p.sale_price || null,
                 image: p.product_images?.[0]?.url || 'https://via.placeholder.com/800?text=No+Image',
                 rating: p.rating_avg || 0,
                 reviewCount: 0,
@@ -192,7 +196,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
   // Map of default key -> label
   const defaultKeyToLabel: Record<string, string> = {
     color: 'Color', lace_type: 'Lace Type', lace_length: 'Lace Length',
-    length: 'Length', wig_size: 'Wig Size', density: 'Density',
+    length: 'Length', wig_size: 'Size', density: 'Density',
   };
 
   // Add from product_options (default groups stored by key)
@@ -222,7 +226,26 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
   const handleOptionSelect = (optName: string, val: string) => {
     const newOpts = { ...selectedOptions, [optName]: val };
     setSelectedOptions(newOpts);
-    // Auto-find matching variant when all variant-generating options are selected
+
+    // If this option is a color and the encoded value carries an image
+    // ("Name|hex|imageUrl"), swap the main product image to the color photo.
+    const isColorOpt = allOptionLabels.find(o => o.name === optName)?.isColor;
+    if (isColorOpt) {
+      const parts = val.split('|');
+      const colorImage = parts[2];
+      if (colorImage && product?.images) {
+        const idx = product.images.indexOf(colorImage);
+        if (idx >= 0) {
+          setSelectedImage(idx);
+        } else {
+          // Inject the color photo into the gallery (at the front) and select it.
+          const updatedImages = [colorImage, ...product.images];
+          setProduct({ ...product, images: updatedImages });
+          setSelectedImage(0);
+        }
+      }
+    }
+
     if (optionNames.length > 0) {
       const allVarSelected = optionNames.every(n => newOpts[n]);
       if (allVarSelected && product?.variants) {
@@ -236,8 +259,10 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
     }
   };
 
-  // Determine the active price: variant price if selected, otherwise base price
-  const activePrice = selectedVariant?.price ?? product?.price ?? 0;
+  // Determine the active price: sale price (if active) > variant price > base price
+  const baseActivePrice = selectedVariant?.price ?? product?.price ?? 0;
+  const showSalePrice = isSaleActive && product?.sale_price != null && product.sale_price > 0 && product.sale_price < (product?.price ?? 0) && !selectedVariant;
+  const activePrice = showSalePrice ? product.sale_price : baseActivePrice;
   const activeStock = selectedVariant ? (selectedVariant.stock ?? selectedVariant.quantity ?? product?.stockCount ?? 0) : (product?.stockCount ?? 0);
 
   const handleAddToCart = () => {
@@ -291,7 +316,8 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
     );
   }
 
-  const discount = product.compare_at_price ? Math.round((1 - activePrice / product.compare_at_price) * 100) : 0;
+  const saleDiscount = showSalePrice ? Math.round((1 - product.sale_price / product.price) * 100) : 0;
+  const discount = showSalePrice ? saleDiscount : (product.compare_at_price ? Math.round((1 - activePrice / product.compare_at_price) * 100) : 0);
   const minVariantPrice = hasVariants ? Math.min(...product.variants.map((v: any) => v.price || product.price)) : product.price;
 
   const productSchema = generateProductSchema({
@@ -307,7 +333,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
     category: product.category
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://example.com');
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://yourdomain.com');
   const breadcrumbSchema = generateBreadcrumbSchema([
     { name: 'Home', url: baseUrl },
     { name: 'Shop', url: `${baseUrl}/shop` },
@@ -399,6 +425,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                               className="object-cover object-center"
                               sizes="(max-width: 1024px) 25vw, 12vw"
                               quality={60}
+                              loading="lazy"
                             />
                           )}
                         </button>
@@ -424,15 +451,21 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
 
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-baseline space-x-3">
-                    {hasVariants && !selectedVariant ? (
+                    {hasVariants && !selectedVariant && !showSalePrice ? (
                       <span className="text-2xl font-bold text-gray-900">
                         From GH₵{minVariantPrice.toFixed(2)}
                       </span>
                     ) : (
-                      <span className="text-2xl font-bold text-gray-900">GH₵{activePrice.toFixed(2)}</span>
+                      <span className={`text-2xl font-bold ${showSalePrice ? 'text-red-600' : 'text-gray-900'}`}>GH₵{activePrice.toFixed(2)}</span>
                     )}
-                    {product.compare_at_price && product.compare_at_price > activePrice && (
+                    {showSalePrice && (
+                      <span className="text-lg text-gray-400 line-through">GH₵{product.price.toFixed(2)}</span>
+                    )}
+                    {!showSalePrice && product.compare_at_price && product.compare_at_price > activePrice && (
                       <span className="text-lg text-gray-400 line-through">GH₵{product.compare_at_price.toFixed(2)}</span>
+                    )}
+                    {discount > 0 && (
+                      <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">{discount}% OFF</span>
                     )}
                   </div>
                   <div className="flex items-center">
@@ -537,7 +570,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                             disabled={isOutOfStock}
                             className={`px-4 py-2 rounded-md border font-medium text-sm transition-all cursor-pointer flex flex-col items-center ${
                               isSelected
-                                ? 'border-gray-900 bg-gray-900 text-white shadow-sm'
+                                ? 'border-gray-900 bg-primary text-white shadow-sm'
                                 : isOutOfStock
                                   ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
                                   : 'border-gray-300 text-gray-700 hover:border-gray-600'
@@ -581,7 +614,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
 
                   <button
                     disabled={activeStock === 0 || needsVariantSelection}
-                    className={`flex-1 h-12 bg-gray-900 hover:bg-gray-800 text-white rounded-md font-semibold transition-colors flex items-center justify-center space-x-2 text-base whitespace-nowrap cursor-pointer ${(activeStock === 0 || needsVariantSelection) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex-1 h-12 bg-primary hover:bg-primary-dark text-white rounded-md font-semibold transition-colors flex items-center justify-center space-x-2 text-base whitespace-nowrap cursor-pointer ${(activeStock === 0 || needsVariantSelection) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={handleAddToCart}
                   >
                     <i className="ri-shopping-cart-line"></i>
@@ -624,10 +657,6 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                   <div className="flex items-center text-gray-700">
                     <i className="ri-store-2-line text-xl text-gray-700 mr-3"></i>
                     <span>Free store pickup available</span>
-                  </div>
-                  <div className="flex items-center text-gray-700">
-                    <i className="ri-arrow-left-right-line text-xl text-gray-700 mr-3"></i>
-                    <span>24-hour return policy for faulty/damaged/wrong items—see Refund Policy</span>
                   </div>
                   <div className="flex items-center text-gray-700">
                     <i className="ri-shield-check-line text-xl text-gray-700 mr-3"></i>
@@ -709,7 +738,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                 {relatedProducts.map((p) => (
-                  <ProductCard key={p.id} {...p} />
+                  <ProductCard key={p.id} {...p} isSaleActive={isSaleActive} />
                 ))}
               </div>
             </div>

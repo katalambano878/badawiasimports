@@ -15,6 +15,8 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get('session_id');
     const orderNumber = searchParams.get('order');
+    const token = searchParams.get('token');
+    const tokenSuffix = token ? `&token=${encodeURIComponent(token)}` : '';
 
     if (!sessionId || !orderNumber) {
       return NextResponse.redirect(new URL('/?error=missing_params', req.url));
@@ -44,7 +46,7 @@ export async function GET(req: Request) {
     }
 
     if (order.payment_status === 'paid') {
-      return NextResponse.redirect(new URL(`/order-success?order=${encodeURIComponent(orderNumber)}`, req.url));
+      return NextResponse.redirect(new URL(`/order-success?order=${encodeURIComponent(orderNumber)}${tokenSuffix}`, req.url));
     }
 
     const { data: orderJson, error: updateError } = await supabase.rpc('mark_order_paid', {
@@ -77,7 +79,7 @@ export async function GET(req: Request) {
     }
 
     const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).replace(/\/+$/, '');
-    return NextResponse.redirect(new URL(`${baseUrl}/order-success?order=${encodeURIComponent(orderNumber)}&payment_success=true`, req.url));
+    return NextResponse.redirect(new URL(`${baseUrl}/order-success?order=${encodeURIComponent(orderNumber)}&payment_success=true${tokenSuffix}`, req.url));
   } catch (error) {
     console.error('[Stripe Success] Error:', error);
     return NextResponse.redirect(new URL('/?error=stripe_verify', req.url));

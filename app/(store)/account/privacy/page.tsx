@@ -106,7 +106,7 @@ export default function PrivacySettingsPage() {
               <button
                 onClick={handleExportData}
                 disabled={exporting}
-                className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium whitespace-nowrap"
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium whitespace-nowrap"
               >
                 {exporting ? (
                   <>

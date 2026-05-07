@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
@@ -9,384 +9,476 @@ import ProductCard, { type ColorVariant, getColorHex } from '@/components/Produc
 import AnimatedSection, { AnimatedGrid } from '@/components/AnimatedSection';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { motion, AnimatePresence } from 'framer-motion';
+import { HERO_SLIDES_HOME } from '@/lib/hero-images';
+
+function buildColorVariants(product: any): ColorVariant[] {
+  const variants = product.product_variants || [];
+  const result: ColorVariant[] = [];
+  const seen = new Set<string>();
+  for (const c of (product.metadata?.product_options?.color?.values || []) as string[]) {
+    const [name, hex] = c.split('|');
+    if (name && hex && !seen.has(name.toLowerCase())) {
+      seen.add(name.toLowerCase());
+      result.push({ name: name.trim(), hex });
+    }
+  }
+  for (const v of variants) {
+    const n = (v as any).option2;
+    if (n && !seen.has(n.toLowerCase())) {
+      const hex = getColorHex(n);
+      if (hex) { seen.add(n.toLowerCase()); result.push({ name: n.trim(), hex }); }
+    }
+  }
+  return result;
+}
 
 export default function Home() {
   usePageTitle('');
   const { getSetting, getActiveBanners } = useCMS();
+
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
+  const [newProducts, setNewProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'featured' | 'new'>('featured');
+
+  const HERO_SLIDES = HERO_SLIDES_HOME;
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
+
+  useEffect(() => {
+    if (heroPaused) return;
+    const t = setInterval(() => setHeroIndex(i => (i + 1) % HERO_SLIDES.length), 3500);
+    return () => clearInterval(t);
+  }, [heroPaused, HERO_SLIDES.length]);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
-          .select('*, product_variants(*), product_images(*)')
-          .eq('status', 'active')
-          .eq('featured', true)
-          .order('created_at', { ascending: false })
-          .limit(8);
-
-        if (productsError) throw productsError;
-        setFeaturedProducts(productsData || []);
-
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('categories')
-          .select('id, name, slug, image_url, metadata')
-          .eq('status', 'active')
-          .order('name');
-
-        if (categoriesError) throw categoriesError;
-
-        const featuredCategories = (categoriesData || []).filter(
-          (cat: any) => cat.metadata?.featured === true
-        );
-        setCategories(featuredCategories.slice(0, 6));
-      } catch (error) {
-        console.error('Error fetching data:', error);
+        const [{ data: featured }, { data: newest }, { data: cats }] = await Promise.all([
+          supabase.from('products').select('*, product_variants(*), product_images(*)').eq('status', 'active').eq('featured', true).order('created_at', { ascending: false }).limit(8),
+          supabase.from('products').select('*, product_variants(*), product_images(*)').eq('status', 'active').order('created_at', { ascending: false }).limit(8),
+          supabase.from('categories').select('id, name, slug, image_url, metadata').eq('status', 'active').order('name'),
+        ]);
+        setFeaturedProducts(featured || []);
+        setNewProducts(newest || []);
+        const featCats = (cats || []).filter((c: any) => c.metadata?.featured).slice(0, 5);
+        setCategories(featCats.length >= 4 ? featCats.slice(0,4) : featCats); // Bento grid looks best with 4
+      } catch (e) {
+        console.error(e);
       } finally {
         setLoading(false);
       }
     }
-
     fetchData();
   }, []);
 
-  // ── CMS-driven config ────────────────────────────────────────────
-  const heroHeadline = getSetting('hero_headline') || 'Your Hair, Your Crown';
-  const heroSubheadline = getSetting('hero_subheadline') || 'Premium wigs, bundles & extensions — crafted for women who demand nothing but the best.';
-  const HERO_SLIDES = ['/brand-hero1.png', '/brand-hero2.png', '/brand-hero3.png'];
-  const HERO_INTERVAL_MS = 3000;
-  const [heroIndex, setHeroIndex] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setHeroIndex((i) => (i + 1) % HERO_SLIDES.length), HERO_INTERVAL_MS);
-    return () => clearInterval(t);
-  }, []);
-  const heroPrimaryText = getSetting('hero_primary_btn_text');
+  const heroHeadline = getSetting('hero_headline') || 'Excellence in Every Import';
+  const heroSubheadline = getSetting('hero_subheadline') || 'Bridging global markets to Ghana with uncompromised quality and speed.';
+  const heroPrimaryText = getSetting('hero_primary_btn_text') || 'Explore Collections';
   const heroPrimaryLink = getSetting('hero_primary_btn_link') || '/shop';
-  const heroSecondaryText = getSetting('hero_secondary_btn_text');
+  const heroSecondaryText = getSetting('hero_secondary_btn_text') || 'The Journey';
   const heroSecondaryLink = getSetting('hero_secondary_btn_link') || '/about';
-  const heroTagText = getSetting('hero_tag_text');
-  const heroBadgeLabel = getSetting('hero_badge_label');
-  const heroBadgeText = getSetting('hero_badge_text');
-  const heroBadgeSubtext = getSetting('hero_badge_subtext');
-
-  const features = [
-    { icon: getSetting('feature1_icon'), title: getSetting('feature1_title'), desc: getSetting('feature1_desc') },
-    { icon: getSetting('feature2_icon'), title: getSetting('feature2_title'), desc: getSetting('feature2_desc') },
-    { icon: getSetting('feature3_icon'), title: getSetting('feature3_title'), desc: getSetting('feature3_desc') },
-    { icon: getSetting('feature4_icon'), title: getSetting('feature4_title'), desc: getSetting('feature4_desc') },
-  ];
-
-  const stat1Title = getSetting('hero_stat1_title');
-  const stat1Desc = getSetting('hero_stat1_desc');
-  const stat2Title = getSetting('hero_stat2_title');
-  const stat2Desc = getSetting('hero_stat2_desc');
-  const stat3Title = getSetting('hero_stat3_title');
-  const stat3Desc = getSetting('hero_stat3_desc');
-
+  const heroTagText = getSetting('hero_tag_text') || 'Premium Selection';
+  const isSaleActive = getSetting('store_wide_sale_enabled') === 'true';
   const activeBanners = getActiveBanners('top');
 
-  const renderBanners = () => {
-    if (activeBanners.length === 0) return null;
-    return (
-      <div className="bg-gray-900 text-white py-2 overflow-hidden relative z-50">
-        <div className="flex animate-marquee whitespace-nowrap">
-          {activeBanners.concat(activeBanners).map((banner, index) => (
-            <span key={index} className="mx-8 text-sm font-medium tracking-wide flex items-center">
-              {banner.title}
-            </span>
-          ))}
-        </div>
-      </div>
-    );
-  };
+  const displayProducts = activeTab === 'featured' ? featuredProducts : newProducts;
+  const compactSectionY = 'py-12 md:py-16';
 
   return (
-    <main className="flex-col items-center justify-between min-h-screen bg-white">
-      {renderBanners()}
+    <main className="min-h-screen bg-[#FDFDFD] overflow-x-hidden selection:bg-[#1ABCDF] selection:text-primary">
 
-      {/* Hero Section */}
-      <section className="relative w-full min-h-[85vh] lg:min-h-screen flex flex-col justify-end overflow-hidden bg-black">
-        <div className="absolute inset-0 z-0 bg-black">
-          {/* Pre-load off-screen so Next.js optimises all slides eagerly */}
-          <div className="sr-only" aria-hidden>
-            {HERO_SLIDES.map((src) => (
-              <Image key={`preload-${src}`} src={src} width={1} height={1} priority alt="" quality={100} />
+      {/* ── 0. God Mode Marquee ─────────────────────────────────────── */}
+      <div className="bg-primary border-b border-white/10 text-white py-3 overflow-hidden relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary via-transparent to-primary z-10 pointer-events-none w-full" />
+        {activeBanners.length > 0 ? (
+          <div className="flex animate-marquee whitespace-nowrap">
+            {[...activeBanners, ...activeBanners, ...activeBanners].map((b, i) => (
+              <span key={i} className="mx-8 text-[11px] font-black tracking-[0.25em] uppercase flex items-center gap-4 text-white/90">
+                <i className="ri-flashlight-fill text-[#1ABCDF]" />
+                {b.title}
+              </span>
             ))}
           </div>
-          <AnimatePresence initial={false} mode="sync">
+        ) : (
+          <div className="flex animate-marquee whitespace-nowrap">
+            {[...Array(3)].map((_, groupIndex) => (
+              <div key={groupIndex} className="flex">
+                {[
+                  'TAMALE & ACCRA SHOWROOMS OPEN',
+                  'DIRECT IMPORTS FROM CHINA',
+                  'UNCOMPROMISED QUALITY',
+                  'WHOLESALE DISCOUNTS AVAILABLE',
+                  'PREMIUM LOGISTICS NETWORK',
+                ].map((t, i) => (
+                  <span key={i} className="mx-8 text-[11px] font-black tracking-[0.25em] uppercase flex items-center gap-4 text-white/90">
+                    <i className="ri-flashlight-fill text-[#CC1414] animate-pulse" />
+                    {t}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── 1. Hero: Cinematic ─────────────────────────────────────── */}
+      <section 
+        className="relative w-full h-[64svh] sm:h-[78svh] lg:h-[86svh] flex items-center overflow-hidden bg-[#060E28] group"
+        onMouseEnter={() => setHeroPaused(true)}
+        onMouseLeave={() => setHeroPaused(false)}
+      >
+        <div className="sr-only" aria-hidden>
+          {HERO_SLIDES.map((s, i) => (
+            <img key={s} src={s} alt="" loading={i === 0 ? 'eager' : 'lazy'} decoding="async" />
+          ))}
+        </div>
+
+        {/* Dynamic Image Layers */}
+        <div className="absolute inset-0 z-0">
+          <AnimatePresence mode="sync">
             <motion.div
               key={heroIndex}
-              initial={{ opacity: 0, scale: 0.84 }}
+              initial={{ opacity: 0, scale: 1.15 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.14 }}
-              transition={{
-                scale: { type: 'spring', stiffness: 220, damping: 28, mass: 0.9 },
-                opacity: { duration: 0.55, ease: 'easeInOut' },
-              }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
               className="absolute inset-0"
             >
-              <Image
+              <img
                 src={HERO_SLIDES[heroIndex]}
-                fill
-                className="object-cover object-top"
-                alt={`Luxury Strand Haven hero ${heroIndex + 1}`}
-                priority
-                sizes="100vw"
-                quality={100}
-                unoptimized
+                className="w-full h-full object-cover object-center filter saturate-[1.1] contrast-[1.05]"
+                alt=""
+                loading={heroIndex === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+                fetchPriority={heroIndex === 0 ? 'high' : 'low'}
               />
             </motion.div>
           </AnimatePresence>
-          {/* Rich bottom-up gradient so text is always readable */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10 pointer-events-none" aria-hidden />
+          {/* Intense cinematic overlays */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#060E28]/40 via-transparent to-[#060E28]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#060E28]/90 via-[#060E28]/30 to-transparent" />
+          <div className="absolute inset-0 bg-[#060E28]/20 backdrop-blur-[2px]" />
         </div>
 
-        {/* Content — left-aligned on desktop, centred on mobile */}
-        <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 pb-16 sm:pb-20 lg:pb-28 pt-32">
-          <div className="max-w-xl lg:max-w-2xl">
-            {/* Tag pill */}
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="text-white/80 text-xs font-bold tracking-[0.25em] uppercase mb-5 inline-flex items-center gap-2 px-4 py-1.5 border border-white/25 rounded-full backdrop-blur-sm"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse"></span>
-              {heroTagText || 'Luxury Strand Haven — Premium Hair'}
-            </motion.p>
+        {/* Floating Accent Ring */}
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 150, repeat: Infinity, ease: "linear" }}
+          className="absolute -right-[20vw] -top-[20vw] w-[60vw] h-[60vw] rounded-full border border-white/5 border-t-white/20 border-l-[#1ABCDF]/30 mix-blend-overlay z-0" 
+        />
 
-            {/* Headline */}
-            <motion.h1
-              initial={{ opacity: 0, y: 32 }}
+        {/* Content */}
+        <motion.div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 flex justify-center">
+          <div className="max-w-4xl flex flex-col items-center text-center">
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25, duration: 0.8 }}
-              className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-white leading-[1.1] mb-5 drop-shadow-2xl"
+              transition={{ delay: 0.2, duration: 0.8, ease: "easeOut" }}
+              className="hidden sm:flex items-center justify-center gap-4 mb-6"
             >
-              {heroHeadline}
+              <div className="h-px w-16 bg-gradient-to-r from-[#1ABCDF] to-transparent" />
+              <span className="text-[#1ABCDF] text-[11px] font-black tracking-[0.3em] uppercase drop-shadow-md">
+                {heroTagText}
+              </span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+              className="text-4xl sm:text-5xl lg:text-7xl font-serif font-bold text-white leading-tight tracking-tight mb-6"
+            >
+              Elevate Your <br />
+              <span className="italic font-light opacity-90 text-transparent bg-clip-text bg-gradient-to-r from-white to-[#1ABCDF]">Lifestyle.</span>
             </motion.h1>
 
-            {/* Subheadline */}
             <motion.p
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.8 }}
-              className="text-base sm:text-lg text-white/80 mb-10 font-light leading-relaxed"
+              transition={{ delay: 0.5, duration: 1 }}
+              className="text-white/60 text-base sm:text-xl font-sans font-light leading-relaxed mb-10 max-w-2xl mx-auto"
             >
               {heroSubheadline}
             </motion.p>
 
-            {/* CTAs */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.55, duration: 0.7 }}
-              className="flex flex-col sm:flex-row gap-3"
+              transition={{ delay: 0.7, duration: 0.8 }}
+              className="flex flex-wrap items-center justify-center gap-6"
             >
               <Link
-                href={heroPrimaryLink || '/shop'}
-                className="inline-flex items-center justify-center gap-2 bg-white text-gray-900 hover:bg-gray-100 px-8 py-4 rounded-full font-bold text-base transition-all hover:scale-105 shadow-xl hover:shadow-white/20"
+                href={heroPrimaryLink}
+                className="group relative overflow-hidden inline-flex items-center gap-3 bg-white text-primary font-black px-10 py-4 rounded-full text-sm uppercase tracking-widest transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_10px_40px_-10px_rgba(255,255,255,0.5)]"
               >
-                {heroPrimaryText || 'Shop Now'}
-                <i className="ri-arrow-right-line text-lg"></i>
+                <div className="absolute inset-0 w-0 bg-[#1ABCDF] transition-all duration-500 ease-out group-hover:w-full z-0" />
+                <span className="relative z-10 group-hover:text-white transition-colors duration-500">{heroPrimaryText}</span>
+                <i className="ri-arrow-right-line relative z-10 group-hover:text-white group-hover:translate-x-1 transition-all duration-500 text-lg" />
               </Link>
               <Link
-                href={heroSecondaryLink || '/academia'}
-                className="inline-flex items-center justify-center gap-2 border border-white/40 bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 px-8 py-4 rounded-full font-semibold text-base transition-all"
+                href={heroSecondaryLink}
+                className="group inline-flex items-center gap-3 px-8 py-4 rounded-full border border-white/20 text-white/90 hover:text-white hover:border-white/60 hover:bg-white/10 backdrop-blur-sm font-medium uppercase tracking-widest text-xs transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_10px_40px_-10px_rgba(255,255,255,0.1)]"
               >
-                {heroSecondaryText || 'Academia'}
+                {heroSecondaryText}
               </Link>
-            </motion.div>
-
-            {/* Trust badges */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.85, duration: 1 }}
-              className="flex flex-wrap items-center gap-4 mt-10"
-            >
-              {[
-                { icon: 'ri-shield-check-line', text: '100% Human Hair' },
-                { icon: 'ri-truck-line', text: 'Fast Nationwide Delivery' },
-                { icon: 'ri-star-fill', text: '5-Star Rated' },
-              ].map((badge) => (
-                <span key={badge.text} className="flex items-center gap-1.5 text-white/70 text-xs font-medium">
-                  <i className={`${badge.icon} text-pink-400 text-base`}></i>
-                  {badge.text}
-                </span>
-              ))}
             </motion.div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Slide dots */}
-        <div className="absolute bottom-6 right-6 z-10 flex gap-2">
-          {HERO_SLIDES.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setHeroIndex(i)}
-              className={`transition-all rounded-full ${i === heroIndex ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/40 hover:bg-white/70'}`}
-              aria-label={`Go to slide ${i + 1}`}
-            />
-          ))}
-        </div>
-
-      </section>
-
-      {/* Categories Section */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <AnimatedSection className="flex items-end justify-between mb-12">
-            <div>
-              <span className="text-gray-500 font-bold tracking-widest uppercase text-xs mb-3 block">Collections</span>
-              <h2 className="font-serif text-4xl md:text-5xl text-gray-900 mb-4">Shop by Category</h2>
-              <p className="text-gray-600 text-lg max-w-md font-light">Explore our carefully curated collections designed for every style.</p>
-            </div>
-            <Link href="/categories" className="hidden md:flex items-center gap-2 text-gray-900 font-bold hover:gap-4 transition-all">
-              View All <i className="ri-arrow-right-line"></i>
-            </Link>
-          </AnimatedSection>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-            {categories.map((category) => (
-              <Link
-                href={`/shop?category=${category.slug}`}
-                key={category.id}
-                className="group cursor-pointer block"
+        {/* Hero Slider Controls - Reimagined */}
+        <div className="absolute bottom-10 right-4 sm:right-8 z-20 hidden sm:flex items-center gap-4">
+          <div className="hidden sm:block text-white/30 font-black text-xs tracking-[0.2em] font-sans">
+            <span className="text-white">{(heroIndex + 1).toString().padStart(2, '0')}</span> / {HERO_SLIDES.length.toString().padStart(2, '0')}
+          </div>
+          <div className="flex gap-2">
+            {HERO_SLIDES.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setHeroIndex(i)}
+                className={`relative h-[1.5px] transition-all duration-500 ${i === heroIndex ? 'w-10 bg-[#1ABCDF]' : 'w-5 bg-white/20 hover:bg-white/50'}`}
               >
-                <div className="aspect-[4/5] rounded-[1.25rem] overflow-hidden relative shadow-sm hover:shadow-lg transition-all duration-500 bg-gray-100">
-                  <Image
-                    src={category.image || category.image_url || 'https://via.placeholder.com/600x800?text=' + encodeURIComponent(category.name)}
-                    alt={category.name}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                    sizes="(max-width: 768px) 50vw, 33vw"
-                    quality={85}
+                {i === heroIndex && (
+                  <motion.div 
+                    layoutId="heroIndicator" 
+                    className="absolute inset-0 bg-[#1ABCDF] shadow-[0_0_10px_#1ABCDF]" 
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500" />
-                  <div className="absolute bottom-4 sm:bottom-6 inset-x-0 px-3 flex justify-center text-white">
-                    <h3 className="font-sans font-medium sm:font-semibold text-base sm:text-lg md:text-xl text-center drop-shadow-md tracking-wide">
-                      {category.name}
-                    </h3>
-                  </div>
-                </div>
-              </Link>
+                )}
+              </button>
             ))}
           </div>
-
-          <div className="mt-12 text-center md:hidden">
-            <Link href="/categories" className="inline-flex items-center gap-2 text-gray-900 font-bold">
-              View All <i className="ri-arrow-right-line"></i>
-            </Link>
-          </div>
         </div>
+
       </section>
 
-      {/* Featured Products */}
-      <section className="py-24 bg-stone-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <AnimatedSection className="text-center mb-16">
-            <span className="text-gray-500 font-bold tracking-widest uppercase text-xs mb-3 block">New Arrivals</span>
-            <h2 className="font-serif text-4xl md:text-5xl text-gray-900 mb-4">Featured Products</h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto font-light">Handpicked favorites just for you.</p>
+      {/* ── 2. Shop by Collection (compact grid) ──────────────────── */}
+      <section className="py-20 md:py-24 bg-[#FDFDFD]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <AnimatedSection className="flex flex-col md:flex-row items-end justify-between gap-6 mb-10 md:mb-12">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="w-8 h-[2px] bg-[#CC1414]" />
+                <span className="text-[#CC1414] font-black tracking-[0.2em] uppercase text-xs">Curated</span>
+              </div>
+              <h2 className="text-4xl md:text-5xl font-serif font-bold text-primary leading-tight">
+                Shop by <br className="hidden md:block" /> Collection
+              </h2>
+            </div>
+            <Link href="/categories" className="group flex items-center gap-3 text-primary font-black uppercase text-xs tracking-widest">
+              View All 
+              <span className="w-10 h-[1px] bg-primary group-hover:w-16 transition-all duration-300" />
+            </Link>
           </AnimatedSection>
 
           {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {[...Array(4)].map((_, i) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="aspect-[4/5] rounded-xl bg-gray-100 animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+              {categories.map((cat) => (
+                <Link
+                  key={cat.id}
+                  href={`/shop?category=${cat.slug}`}
+                  className="group relative block aspect-[4/5] overflow-hidden rounded-xl border border-gray-100 bg-[#060E28] shadow-[0_10px_24px_-18px_rgba(13,27,69,0.35)] transition-all duration-500 hover:shadow-[0_18px_32px_-16px_rgba(13,27,69,0.45)]"
+                >
+                  <Image
+                    src={cat.image_url || `https://placehold.co/800x1000/0D1B45/FFFFFF?text=${encodeURIComponent(cat.name)}`}
+                    alt={cat.name}
+                    fill
+                    className="object-cover transition-transform duration-[1.2s] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#060E28]/95 via-[#060E28]/40 to-transparent opacity-90 transition-opacity duration-500 group-hover:opacity-100" />
+
+                  {/* Cyan accent bar that grows on hover */}
+                  <span className="absolute left-3 top-3 h-1 w-6 rounded-full bg-[#1ABCDF] transition-all duration-500 group-hover:w-10" />
+
+                  <div className="absolute inset-x-0 bottom-0 p-3 text-white">
+                    <div className="flex items-end justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="font-serif text-sm sm:text-base font-bold leading-tight line-clamp-2">
+                          {cat.name}
+                        </h3>
+                        <div className="mt-1.5 inline-flex items-center gap-1 border-b border-white/30 pb-0.5 text-[9px] font-black uppercase tracking-widest text-white transition-colors group-hover:border-[#1ABCDF] group-hover:text-[#1ABCDF]">
+                          Explore
+                          <i className="ri-arrow-right-line text-[11px] transition-transform group-hover:translate-x-1" />
+                        </div>
+                      </div>
+                      <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur transition-all duration-500 group-hover:border-[#1ABCDF] group-hover:bg-[#1ABCDF] group-hover:text-[#060E28]">
+                        <i className="ri-arrow-right-up-line text-xs" />
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── 4. Exhibition Showcase (Products) ─────────────────────── */}
+      <section className="py-32 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <AnimatedSection className="flex flex-col items-center text-center mb-16">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="w-8 h-[2px] bg-[#1ABCDF]" />
+              <span className="text-primary font-black tracking-[0.2em] uppercase text-xs">Exhibition</span>
+              <span className="w-8 h-[2px] bg-[#1ABCDF]" />
+            </div>
+            <h2 className="text-5xl md:text-6xl font-serif font-bold text-primary mb-10">Latest Arrivals</h2>
+            
+            <div className="flex items-center gap-6 pb-2 border-b border-gray-200">
+              {(['featured', 'new'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`relative text-sm font-black uppercase tracking-widest pb-4 transition-colors ${
+                    activeTab === tab ? 'text-primary' : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  {tab === 'featured' ? 'Featured' : 'New Intake'}
+                  {activeTab === tab && (
+                    <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </AnimatedSection>
+
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-12">
+              {[...Array(8)].map((_, i) => (
                 <div key={i} className="animate-pulse">
-                  <div className="bg-gray-200 aspect-[3/4] rounded-2xl mb-4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                  <div className="bg-gray-100 aspect-[3/4] mb-4" />
+                  <div className="h-4 bg-gray-100 w-2/3 mb-2" />
+                  <div className="h-4 bg-gray-100 w-1/3" />
                 </div>
               ))}
             </div>
           ) : (
-            <AnimatedGrid className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
-              {featuredProducts.map((product) => {
-                const variants = product.product_variants || [];
-                const hasVariants = variants.length > 0;
-                const minVariantPrice = hasVariants ? Math.min(...variants.map((v: any) => v.price || product.price)) : undefined;
-                const totalVariantStock = hasVariants ? variants.reduce((sum: number, v: any) => sum + (v.quantity || 0), 0) : 0;
-                const effectiveStock = hasVariants ? totalVariantStock : product.quantity;
-
-                const colorVariants: ColorVariant[] = [];
-                const seenColors = new Set<string>();
-                // Pull colors from metadata.product_options.color (new system)
-                const metaColors = (product.metadata?.product_options?.color?.values || []) as string[];
-                for (const c of metaColors) {
-                  const [cName, cHex] = c.split('|');
-                  if (cName && cHex && !seenColors.has(cName.toLowerCase().trim())) {
-                    seenColors.add(cName.toLowerCase().trim());
-                    colorVariants.push({ name: cName.trim(), hex: cHex });
-                  }
-                }
-                // Fallback: legacy colors from variant option2
-                for (const v of variants) {
-                  const colorName = (v as any).option2;
-                  if (colorName && !seenColors.has(colorName.toLowerCase().trim())) {
-                    const hex = getColorHex(colorName);
-                    if (hex) {
-                      seenColors.add(colorName.toLowerCase().trim());
-                      colorVariants.push({ name: colorName.trim(), hex });
-                    }
-                  }
-                }
-
-                return (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    slug={product.slug}
-                    name={product.name}
-                    price={product.price}
-                    originalPrice={product.compare_at_price}
-                    image={product.product_images?.[0]?.url || 'https://via.placeholder.com/400x500'}
-                    rating={product.rating_avg || 5}
-                    reviewCount={product.review_count || 0}
-                    badge={product.featured ? 'Featured' : undefined}
-                    inStock={effectiveStock > 0}
-                    maxStock={effectiveStock || 50}
-                    moq={product.moq || 1}
-                    hasVariants={hasVariants}
-                    minVariantPrice={minVariantPrice}
-                    colorVariants={colorVariants}
-                    brand={product.brand || product.vendor}
-                  />
-                );
-              })}
-            </AnimatedGrid>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, filter: 'blur(10px)' }}
+                animate={{ opacity: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, filter: 'blur(10px)' }}
+                transition={{ duration: 0.4 }}
+              >
+                {displayProducts.length > 0 ? (
+                  <AnimatedGrid className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-8 md:gap-y-16">
+                    {displayProducts.map(product => {
+                      const variants = product.product_variants || [];
+                      const hasVariants = variants.length > 0;
+                      const minVariantPrice = hasVariants ? Math.min(...variants.map((v: any) => v.price || product.price)) : undefined;
+                      const effectiveStock = hasVariants ? variants.reduce((s: number, v: any) => s + (v.quantity || 0), 0) : product.quantity;
+                      return (
+                        <ProductCard
+                          key={product.id}
+                          id={product.id}
+                          slug={product.slug}
+                          name={product.name}
+                          price={product.price}
+                          originalPrice={product.compare_at_price}
+                          salePrice={product.sale_price || null}
+                          isSaleActive={isSaleActive}
+                          image={product.product_images?.[0]?.url || 'https://placehold.co/400x500/0D1B45/FFFFFF?text=Product'}
+                          rating={product.rating_avg || 5}
+                          reviewCount={product.review_count || 0}
+                          badge={product.featured ? 'Iconic' : undefined}
+                          inStock={effectiveStock > 0}
+                          maxStock={effectiveStock || 50}
+                          moq={product.moq || 1}
+                          hasVariants={hasVariants}
+                          minVariantPrice={minVariantPrice}
+                          colorVariants={buildColorVariants(product)}
+                          brand={product.brand || product.vendor}
+                        />
+                      );
+                    })}
+                  </AnimatedGrid>
+                ) : (
+                  <div className="py-32 text-center text-gray-300">
+                    <p className="font-serif text-2xl italic">Inventory updating...</p>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
           )}
 
-          <div className="text-center mt-20">
+          <div className="mt-20 text-center">
             <Link
               href="/shop"
-              className="inline-flex items-center justify-center bg-gray-900 text-white px-12 py-5 rounded-full font-bold text-lg hover:bg-gray-800 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1"
+              className="group inline-flex items-center gap-4 bg-primary text-white font-black px-12 py-5 rounded-full text-sm uppercase tracking-widest transition-all hover:bg-primary-dark"
             >
-              Shop All Products
+              Enter The Store
+              <i className="ri-arrow-right-line group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Trust Features */}
-      <section className="py-24 bg-white border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
-            {features.map((feature, i) => (
-              <AnimatedSection key={i} delay={i * 0.1} className="flex flex-col items-center text-center group">
-                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6 text-gray-900 group-hover:bg-gray-900 group-hover:text-white transition-colors duration-500">
-                  <i className={`${feature.icon} text-3xl`}></i>
+      {/* ── 6. Terminal (Locations & Contact) ─────────────────────── */}
+      <section className="hidden sm:block bg-[#F7F8FC] py-8 md:py-10 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <AnimatedSection className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#060E28] via-[#0A1438] to-[#143D70] px-6 sm:px-8 lg:px-12 py-6 sm:py-7 lg:py-8">
+            <div className="absolute inset-0 opacity-15 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]" />
+            <motion.div
+              animate={{ scale: [1, 1.06, 1] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -top-20 -right-16 w-[240px] h-[240px] bg-white/10 rounded-full blur-3xl"
+            />
+
+            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-6 lg:gap-12 items-center">
+              <div className="hidden lg:block">
+                <span className="text-[#1ABCDF] font-black tracking-[0.2em] uppercase text-[11px] mb-2 block">Terminals</span>
+                <h2 className="text-2xl md:text-3xl font-serif font-bold mb-4">Strategic Hubs</h2>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { city: 'Tamale', desc: 'Flagship Showroom & Northern Logistics Hub.', icon: 'ri-map-pin-user-line' },
+                    { city: 'Accra', desc: 'Greater Accra Distribution & Wholesale Center.', icon: 'ri-building-2-line' }
+                  ].map((loc, i) => (
+                    <div key={i} className="flex gap-3 group">
+                      <div className="w-9 h-9 shrink-0 rounded-full border border-white/25 flex items-center justify-center group-hover:border-[#1ABCDF] group-hover:bg-[#1ABCDF]/10 transition-colors">
+                        <i className={`${loc.icon} text-lg text-white/70 group-hover:text-[#1ABCDF] transition-colors`} />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-serif font-bold mb-0.5 leading-tight">{loc.city}</h3>
+                        <p className="text-white/70 font-light text-xs leading-snug">{loc.desc}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <h3 className="font-bold text-gray-900 mb-2 text-lg">{feature.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{feature.desc}</p>
-              </AnimatedSection>
-            ))}
-          </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row md:items-center gap-5 md:gap-6 lg:pl-6 lg:border-l lg:border-white/10">
+                <div className="w-12 h-12 bg-white text-[#CC1414] flex items-center justify-center rounded-full shadow-xl shrink-0">
+                  <i className="ri-whatsapp-fill text-2xl" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-2xl md:text-3xl font-serif font-bold text-white mb-2 leading-tight">Direct Line to Excellence.</h2>
+                  <p className="text-white/80 font-light text-sm md:text-base mb-4 max-w-xl">
+                    Skip the queues. Connect directly with our concierge team via WhatsApp for instant bulk quotes, custom sourcing, and support.
+                  </p>
+                  <a
+                    href="https://wa.me/233539781532"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-3 bg-white text-[#CC1414] font-black px-6 py-3 uppercase tracking-widest text-xs rounded-xl hover:bg-gray-100 transition-colors shadow-[0_20px_40px_rgba(0,0,0,0.2)]"
+                  >
+                    Start Conversation <i className="ri-arrow-right-up-line text-base" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </AnimatedSection>
         </div>
       </section>
+
     </main>
   );
 }

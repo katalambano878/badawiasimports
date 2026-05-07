@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendOrderConfirmation } from '@/lib/notifications';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
+import { checkMoolreTransaction } from '@/lib/moolre';
 
 // Use Service Role Key for admin-level updates (marking paid)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -121,18 +122,40 @@ export async function POST(req: Request) {
 
         // Verify payment success
         // Moolre: status=1 + data.txtstatus=1 + message contains "successful"
-        const isSuccess =
-            (apiStatus === 1 || apiStatus === '1') ||
-            (txStatus === 1 || txStatus === '1') ||
+        const hasFailureSignal =
+            txStatus === 0 || txStatus === '0' ||
+            txStatus === -1 || txStatus === '-1' ||
+            messageStr.includes('fail') ||
+            messageStr.includes('cancel') ||
+            messageStr.includes('declin') ||
+            messageStr.includes('error');
+        const hasSuccessSignal =
+            ((apiStatus === 1 || apiStatus === '1') && (txStatus === 1 || txStatus === '1')) ||
             messageStr.includes('successful') ||
-            messageStr.includes('success') ||
             messageStr.includes('completed') ||
             messageStr.includes('paid');
+        const isSuccess = hasSuccessSignal && !hasFailureSignal;
 
-        // Verify secret if configured (optional security check)
+        // Verification model:
+        //   Moolre's documented webhook payload does NOT contain a `secret`
+        //   field, so a static-secret check rejects every legitimate callback
+        //   (which is what was happening — every order stuck pending). Instead
+        //   we trust the callback only if BOTH:
+        //     1. We can find a matching order by externalref (random per-order),
+        //        which is enough to defeat blind spoofing — attackers don't
+        //        know our order numbers.
+        //     2. The callback's amount matches the stored order total.
+        //   We then call back to Moolre's authenticated /open/transact/status
+        //   API as a defense-in-depth check, but treat that as advisory only
+        //   (an auth/network failure there must not strand a paying customer).
+        //   If the operator has configured MOOLRE_CALLBACK_SECRET AND Moolre
+        //   actually echoes it (some accounts can do this via dashboard config),
+        //   we'll honour it as a bonus signal, but never require it.
         const expectedSecret = process.env.MOOLRE_CALLBACK_SECRET;
-        if (expectedSecret && body.secret && body.secret !== expectedSecret) {
-            console.error('[Callback] Secret mismatch! Possible spoofed callback.');
+        const callbackHasSecret = !!body.secret;
+        const secretMatches = expectedSecret && body.secret === expectedSecret;
+        if (callbackHasSecret && expectedSecret && !secretMatches) {
+            console.error('[Callback] secret field present but mismatched — rejecting as likely spoof.');
             return NextResponse.json({ success: false, message: 'Invalid secret' }, { status: 403 });
         }
 
@@ -157,10 +180,29 @@ export async function POST(req: Request) {
                 return NextResponse.json({ success: true, message: 'Order already processed' });
             }
 
-            // Verify amount if available
+            // Reject on amount mismatch — never trust the customer's actual payment to match the order total
             const callbackAmount = data.amount ? parseFloat(data.amount) : (body.amount ? parseFloat(body.amount) : null);
-            if (callbackAmount && Math.abs(callbackAmount - Number(existingOrder.total)) > 0.01) {
-                console.warn('[Callback] Amount mismatch! Expected:', existingOrder.total, 'Got:', callbackAmount);
+            if (callbackAmount !== null && Math.abs(callbackAmount - Number(existingOrder.total)) > 0.01) {
+                console.error('[Callback] Amount mismatch — rejecting. Expected:', existingOrder.total, 'Got:', callbackAmount, 'Order:', merchantOrderRef);
+                return NextResponse.json({ success: false, message: 'Amount mismatch' }, { status: 400 });
+            }
+
+            // Defense in depth: ask Moolre directly whether this transaction
+            // succeeded. If they say "no", refuse to mark it paid. If the
+            // status API itself fails (auth/network), we proceed — it must
+            // never strand a paying customer behind a broken side-channel.
+            try {
+                const verifyId = rawExternalRef || merchantOrderRef;
+                const moolreCheck = await checkMoolreTransaction({ id: String(verifyId) });
+                if (!moolreCheck.ok && !moolreCheck.authError && moolreCheck.raw !== null) {
+                    console.error('[Callback] Moolre status API explicitly says NOT paid — rejecting:', moolreCheck.message);
+                    return NextResponse.json({ success: false, message: 'Transaction not confirmed by Moolre' }, { status: 400 });
+                }
+                if (moolreCheck.ok) {
+                    console.log('[Callback] Moolre status API confirms transaction:', verifyId);
+                }
+            } catch (verifyErr: unknown) {
+                console.warn('[Callback] Moolre status API check failed (non-fatal):', verifyErr instanceof Error ? verifyErr.message : verifyErr);
             }
 
             // Mark order as paid via RPC
@@ -209,14 +251,23 @@ export async function POST(req: Request) {
             // Payment failed
             console.log(`[Callback] Payment FAILED for ${merchantOrderRef} | Status: ${apiStatus} | TX: ${txStatus}`);
 
+            const { data: failedOrderMeta } = await supabase
+                .from('orders')
+                .select('metadata')
+                .eq('order_number', merchantOrderRef)
+                .single();
+
+            const mergedFailureMetadata = {
+                ...(failedOrderMeta?.metadata || {}),
+                moolre_reference: moolreReference,
+                failure_reason: body.message || 'Payment failed'
+            };
+
             await supabase
                 .from('orders')
                 .update({
                     payment_status: 'failed',
-                    metadata: {
-                        moolre_reference: moolreReference,
-                        failure_reason: body.message || 'Payment failed'
-                    }
+                    metadata: mergedFailureMetadata
                 })
                 .eq('order_number', merchantOrderRef);
 

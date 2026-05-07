@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { supabase } from '@/lib/supabase';
 
 interface SalesStat {
@@ -23,11 +23,7 @@ export default function ProductSalesStats({ isOpen, onClose }: { isOpen: boolean
     const [stats, setStats] = useState<(Omit<SalesStat, '_orderIds' | 'variants'> & { variants: VariantDisplay[] })[]>([]);
     const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (isOpen) fetchStats();
-    }, [isOpen, period]);
-
-    const fetchStats = async () => {
+    const fetchStats = useCallback(async () => {
         setLoading(true);
 
         // Calculate the start date based on period
@@ -131,7 +127,11 @@ export default function ProductSalesStats({ isOpen, onClose }: { isOpen: boolean
         } finally {
             setLoading(false);
         }
-    };
+    }, [period]);
+
+    useEffect(() => {
+        if (isOpen) fetchStats();
+    }, [isOpen, period, fetchStats]);
 
     if (!isOpen) return null;
 
@@ -215,7 +215,7 @@ export default function ProductSalesStats({ isOpen, onClose }: { isOpen: boolean
                                                 )}
                                                 <span>{s.productName}</span>
                                                 {hasVariants && (
-                                                    <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-semibold">
+                                                    <span className="text-[10px] bg-primary-soft text-primary px-1.5 py-0.5 rounded-full font-semibold">
                                                         {s.variants.length} variants
                                                     </span>
                                                 )}
@@ -235,10 +235,10 @@ export default function ProductSalesStats({ isOpen, onClose }: { isOpen: boolean
                                     </tr>
                                     {expandedProduct === s.productId && hasVariants && (
                                         s.variants.map((v) => (
-                                            <tr key={`${s.productId}-${v.name}`} className="bg-gray-50/80 border-l-2 border-purple-200">
+                                            <tr key={`${s.productId}-${v.name}`} className="bg-gray-50/80 border-l-2 border-primary/20">
                                                 <td className="p-3 pl-14 text-gray-600 text-xs">
                                                     <span className="inline-flex items-center space-x-1.5">
-                                                        <i className="ri-price-tag-3-line text-purple-400"></i>
+                                                        <i className="ri-price-tag-3-line text-primary-light"></i>
                                                         <span className="font-medium">{v.name}</span>
                                                     </span>
                                                 </td>

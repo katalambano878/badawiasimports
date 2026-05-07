@@ -21,6 +21,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Supabase temp (project-specific)
+supabase/.temp
+
 # Local Env Files
 .env
 .env.local

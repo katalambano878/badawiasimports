@@ -87,6 +87,7 @@ export default function AdminDashboard() {
         }, {});
 
         paidOrders.forEach(order => {
+          if (!order.created_at) return;
           const date = new Date(order.created_at).toISOString().split('T')[0];
           if (chartMap[date] !== undefined) {
             chartMap[date] += (order.total || 0);
@@ -153,7 +154,7 @@ export default function AdminDashboard() {
               displayId: o.order_number,
               customer: customerName,
               email: o.email,
-              date: new Date(o.created_at).toLocaleDateString(),
+              date: new Date(o.created_at ?? 0).toLocaleDateString(),
               total: o.total,
               status: o.status,
               items: 1
@@ -205,7 +206,7 @@ export default function AdminDashboard() {
   const statusColors: any = {
     'pending': 'bg-amber-100 text-amber-700',
     'processing': 'bg-blue-100 text-blue-700',
-    'shipped': 'bg-purple-100 text-purple-700',
+    'shipped': 'bg-primary-soft text-primary',
     'delivered': 'bg-gray-100 text-gray-900',
     'cancelled': 'bg-red-100 text-red-700'
   };

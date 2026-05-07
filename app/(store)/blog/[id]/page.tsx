@@ -14,16 +14,16 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
 
   const posts: any = {
     '1': {
-      title: 'The Ultimate Guide to Online Shopping in Ghana',
+      title: 'The Ultimate Guide to Online Shopping',
       image: 'https://placehold.co/1200x600?text=Blog',
       category: 'Shopping Tips',
       date: 'December 15, 2024',
       readTime: '8 min read',
-      author: 'Ama Osei',
+      author: 'Store Team',
       content: `
-        <p>Online shopping has revolutionised the way Ghanaians purchase products, offering convenience, variety, and competitive prices. However, navigating the world of ecommerce can be daunting if you're new to it. This comprehensive guide will help you shop online safely and confidently.</p>
+        <p>Online shopping has revolutionised the way we purchase products, offering convenience, variety, and competitive prices. However, navigating the world of ecommerce can be daunting if you're new to it. This comprehensive guide will help you shop online safely and confidently.</p>
 
-        <h2>Why Shop Online in Ghana?</h2>
+        <h2>Why Shop Online?</h2>
         <p>The benefits of online shopping are numerous. You can browse thousands of products from the comfort of your home, compare prices easily, read reviews from other customers, and have items delivered directly to your doorstep. For busy professionals and families, online shopping saves valuable time.</p>
 
         <p>Moreover, online stores often offer exclusive deals and promotions that aren't available in physical shops. You can shop at any time of day or night, without worrying about store opening hours or traffic.</p>
@@ -38,18 +38,18 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
           <li><strong>Professional design:</strong> Well-organised website with detailed product information</li>
         </ul>
 
-        <h2>Payment Methods in Ghana</h2>
-        <p>Ghanaian online shoppers have several secure payment options:</p>
+        <h2>Payment Methods</h2>
+        <p>Online shoppers have several secure payment options:</p>
         <ul>
-          <li><strong>Mobile Money:</strong> MTN, Vodafone, and AirtelTigo offer convenient payment options</li>
           <li><strong>Credit/Debit Cards:</strong> Visa and Mastercard are widely accepted</li>
-          <li><strong>Moolre Payment:</strong> Our integrated payment gateway for seamless mobile money and card payments</li>
+          <li><strong>Digital Wallets:</strong> Various mobile and online payment options</li>
+          <li><strong>Bank Transfer:</strong> Direct payment options available at checkout</li>
         </ul>
 
         <p>Always ensure you're on a secure connection when entering payment details. Avoid using public Wi-Fi for transactions.</p>
 
         <h2>Understanding Delivery Options</h2>
-        <p>Delivery times and costs vary by location. In Accra and major cities, you can often get next-day delivery. Remote areas may take longer. Always check:</p>
+        <p>Delivery times and costs vary by location. Major metropolitan areas often get faster delivery. Remote areas may take longer. Always check:</p>
         <ul>
           <li>Estimated delivery time for your location</li>
           <li>Delivery costs (many stores offer free shipping above a certain amount)</li>
@@ -88,7 +88,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
         </ul>
 
         <h2>Conclusion</h2>
-        <p>Online shopping in Ghana is safe, convenient, and increasingly popular. By following these guidelines, you can enjoy all the benefits whilst minimising risks. Start with small purchases from reputable stores to build confidence, and soon you'll wonder how you ever lived without the convenience of online shopping.</p>
+        <p>Online shopping is safe, convenient, and increasingly popular. By following these guidelines, you can enjoy all the benefits whilst minimising risks. Start with small purchases from reputable stores to build confidence, and soon you'll wonder how you ever lived without the convenience of online shopping.</p>
 
         <p>Happy shopping!</p>
       `
@@ -99,7 +99,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
       category: 'Home & Living',
       date: 'December 12, 2024',
       readTime: '6 min read',
-      author: 'Yaw Darko',
+      author: 'Store Team',
       content: `
         <p>Transform your living space with these carefully selected must-have products. Whether you're refreshing your décor or starting from scratch, these items will elevate your home's comfort and style.</p>
 
@@ -107,7 +107,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
         <p>Modern LED bulbs with adjustable brightness and colour temperature can dramatically change your home's ambience. Control them from your phone, set schedules, and reduce energy costs.</p>
 
         <h2>2. Premium Bedding Set</h2>
-        <p>Invest in quality sheets, duvet covers, and pillows. Good sleep is essential, and premium bedding makes a noticeable difference. Look for breathable fabrics suitable for Ghana's climate.</p>
+        <p>Invest in quality sheets, duvet covers, and pillows. Good sleep is essential, and premium bedding makes a noticeable difference. Look for breathable fabrics suitable for your climate.</p>
 
         <h2>3. Air Purifier</h2>
         <p>With increasing air quality concerns, an air purifier removes dust, pollen, and pollutants, creating a healthier indoor environment for your family.</p>
@@ -128,7 +128,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
         <p>Protect your electronics and reduce energy waste with a smart power strip that cuts power to devices in standby mode.</p>
 
         <h2>9. Bath Towel Set</h2>
-        <p>Luxury doesn't have to be expensive. A set of soft, absorbent towels in coordinating colours makes your bathroom feel like a spa.</p>
+        <p>Quality doesn't have to be expensive. A set of soft, absorbent towels in coordinating colours makes your bathroom feel like a spa.</p>
 
         <h2>10. Decorative Mirror</h2>
         <p>Mirrors make spaces feel larger and brighter by reflecting light. Choose a statement piece that complements your décor style.</p>
@@ -145,7 +145,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
       category: 'Buying Guide',
       date: 'December 10, 2024',
       readTime: '7 min read',
-      author: 'Kwame Mensah',
+      author: 'Store Team',
       content: `
         <p>In a market flooded with options, choosing quality products can be challenging. This guide will help you identify genuine quality and make purchasing decisions you won't regret.</p>
 
@@ -186,7 +186,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
         <h2>Price vs. Value</h2>
         <p>Expensive doesn't always mean quality, and cheap isn't always poor. Consider:</p>
         <ul>
-          <li><strong>Cost per use:</strong> A GHS 200 item used daily for 5 years offers better value than a GHS 50 item replaced yearly</li>
+          <li><strong>Cost per use:</strong> A higher-priced item used daily for years may offer better value than a cheaper item replaced yearly</li>
           <li><strong>Warranty and guarantees:</strong> Quality manufacturers stand behind their products</li>
           <li><strong>Maintenance costs:</strong> Some cheap items require expensive upkeep</li>
           <li><strong>Resale value:</strong> Quality items retain value better</li>
@@ -264,7 +264,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
   const relatedPosts = [
     {
       id: id === '1' ? '2' : '1',
-      title: id === '1' ? '10 Must-Have Products for Your Home This Season' : 'The Ultimate Guide to Online Shopping in Ghana',
+      title: id === '1' ? '10 Must-Have Products for Your Home This Season' : 'The Ultimate Guide to Online Shopping',
       image: id === '1' ?
         'https://placehold.co/600x400?text=Blog' :
         'https://placehold.co/600x400?text=Blog',
@@ -272,7 +272,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ id: s
     },
     {
       id: id === '3' ? '1' : '3',
-      title: id === '3' ? 'The Ultimate Guide to Online Shopping in Ghana' : 'How to Choose Quality Products: A Buyer\'s Guide',
+      title: id === '3' ? 'The Ultimate Guide to Online Shopping' : 'How to Choose Quality Products: A Buyer\'s Guide',
       image: id === '3' ?
         'https://placehold.co/600x400?text=Blog' :
         'https://placehold.co/600x400?text=Blog',

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 90" width="320" height="90">
+  <!-- Navy background -->
+  <rect width="320" height="90" rx="8" fill="#0D1B45"/>
+  <!-- Red accent bar left -->
+  <rect x="0" y="0" width="6" height="90" rx="3" fill="#CC1414"/>
+  <!-- Cyan accent bar top -->
+  <rect x="6" y="0" width="314" height="4" rx="2" fill="#1ABCDF"/>
+  <!-- Brand text -->
+  <text x="170" y="38" dominant-baseline="middle" text-anchor="middle"
+    font-family="'Outfit', system-ui, sans-serif" font-size="24" font-weight="900"
+    fill="#FFFFFF" letter-spacing="-0.5">BADAWIA&apos;S</text>
+  <text x="170" y="68" dominant-baseline="middle" text-anchor="middle"
+    font-family="'Outfit', system-ui, sans-serif" font-size="16" font-weight="700"
+    fill="#1ABCDF" letter-spacing="6">IMPORTS</text>
+</svg>

@@ -133,7 +133,7 @@ export default function InventoryManagementPage() {
           </div>
           <Link
             href="/admin"
-            className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap text-center"
+            className="bg-primary hover:bg-primary text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap text-center"
           >
             Back to Dashboard
           </Link>
@@ -225,7 +225,7 @@ export default function InventoryManagementPage() {
 
               <button
                 onClick={() => setShowImportModal(true)}
-                className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-3 rounded-lg font-semibold transition-colors flex items-center space-x-2 whitespace-nowrap cursor-pointer"
+                className="bg-primary hover:bg-primary text-white px-4 py-3 rounded-lg font-semibold transition-colors flex items-center space-x-2 whitespace-nowrap cursor-pointer"
               >
                 <i className="ri-upload-line"></i>
                 <span>Import CSV</span>
@@ -249,7 +249,7 @@ export default function InventoryManagementPage() {
               <div className="flex items-center space-x-3">
                 <button
                   onClick={handleBulkRestock}
-                  className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer"
+                  className="bg-primary hover:bg-primary text-white px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer"
                 >
                   Bulk Restock
                 </button>

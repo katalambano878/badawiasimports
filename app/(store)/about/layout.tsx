@@ -1,25 +1,21 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'About Us — Ghana\'s Premier Hair Destination',
-  description: 'Learn about Luxury Strand Haven — Ghana\'s most trusted premium hair brand. We specialize in 100% human hair wigs, bundles, closures & frontals. Elevating hair standards across Ghana with quality, elegance and expertise.',
-  keywords: [
-    'about Luxury Strand Haven', 'premium hair brand Ghana', 'best wig brand Ghana',
-    'human hair Ghana brand', 'trusted hair shop Ghana', 'Accra hair brand',
-    'luxury hair Ghana story', 'Ghana hair company',
-  ].join(', '),
+  title: 'About Us',
+  description: "Learn about BADAWIA'S IMPORTS — Ghana's trusted import company. Direct sourcing from premium manufacturers, flagship showrooms in Tamale and Accra. Our story, mission, and values.",
+  keywords: ['about Badawia Imports', 'import company Ghana', 'our story', 'mission', 'Tamale business', 'Accra imports', 'direct sourcing Ghana', 'quality imports Ghana'],
   openGraph: {
-    title: 'About Luxury Strand Haven | Ghana\'s Premier Hair Brand',
-    description: 'Ghana\'s most trusted premium hair brand — custom wigs, bundles, closures & frontals.',
-    images: [{ url: '/og-home.png', width: 1200, height: 630, alt: 'About Luxury Strand Haven — Premium Hair Ghana', type: 'image/png' }],
+    title: "About Us | BADAWIA'S IMPORTS",
+    description: "Our story — quality imports serving Tamale and Accra, Ghana since 2020.",
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "About — BADAWIA'S IMPORTS", type: 'image/png' }],
     url: '/about',
-    locale: 'en_GH',
+    locale: 'en',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'About Luxury Strand Haven | Ghana\'s Premier Hair Brand',
-    description: 'Ghana\'s most trusted premium hair brand.',
-    images: ['/og-home.png'],
+    title: "About Us | BADAWIA'S IMPORTS",
+    description: "Our story and mission — quality imports across Ghana.",
+    images: ['/opengraph-image'],
   },
   alternates: { canonical: '/about' },
 };

@@ -41,12 +41,13 @@ export default function FlashSaleBanner() {
     }, 1000);
 
     return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run once, flashSale.endTime is initial
   }, []);
 
   if (!isVisible) return null;
 
   return (
-    <div className="bg-gradient-to-r from-red-600 via-pink-600 to-orange-600 text-white py-3">
+    <div className="bg-gradient-to-r from-primary-dark via-primary to-accent text-white py-3">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center space-x-4">
@@ -80,7 +81,7 @@ export default function FlashSaleBanner() {
 
             <a
               href={flashSale.ctaLink}
-              className="bg-white text-red-600 px-6 py-2 rounded-lg font-bold hover:bg-gray-100 transition-colors whitespace-nowrap"
+              className="bg-white text-primary px-6 py-2 rounded-lg font-bold hover:bg-primary-soft transition-colors whitespace-nowrap"
             >
               {flashSale.ctaText}
             </a>

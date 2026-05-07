@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -93,6 +93,7 @@ export default function AdvancedSearch() {
     } else {
       setSuggestions([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- allProducts is static
   }, [query]);
 
   const handleSearch = (searchQuery: string) => {

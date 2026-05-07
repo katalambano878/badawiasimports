@@ -4,11 +4,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useCMS } from '@/context/CMSContext';
 import AnimatedSection from '@/components/AnimatedSection';
+import { DEFAULT_CONTACT_PHONE } from '@/lib/contact';
 
 export default function FAQsPage() {
   const { getSetting } = useCMS();
-  const contactEmail = getSetting('contact_email') || 'maame890@gmail.com';
-  const contactPhone = getSetting('contact_phone') || '054 930 7736';
+  const contactEmail = getSetting('contact_email') || '';
+  const contactPhone = getSetting('contact_phone') || DEFAULT_CONTACT_PHONE;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
@@ -46,17 +47,17 @@ export default function FAQsPage() {
     {
       category: 'shipping',
       question: 'What are your delivery times?',
-      answer: 'Standard delivery takes 2-5 business days within Ghana. Express delivery (next-day) is available for Accra and Kumasi. Orders placed before 2pm are dispatched same day. Remote areas may take 5-7 business days.'
+      answer: 'Standard delivery typically takes 2-5 business days. Express delivery may be available for major areas. Orders placed before 2pm are often dispatched same day. Remote areas may take 5-7 business days. Configure in Admin → Settings.'
     },
     {
       category: 'shipping',
       question: 'How much does shipping cost?',
-      answer: 'Standard shipping costs GHS 20. Express delivery costs GHS 40. Orders over GHS 300 qualify for FREE standard shipping. Store pickup is also available at no charge from our Accra location.'
+      answer: 'Shipping costs vary by destination. Free shipping may apply above a threshold. Store pickup may be available. Configure in Admin → Settings.'
     },
     {
       category: 'shipping',
-      question: 'Do you ship outside Ghana?',
-      answer: 'Currently, we only ship within Ghana. We\'re working on expanding to neighbouring West African countries. Sign up for our newsletter to be notified when international shipping becomes available.'
+      question: 'Do you ship internationally?',
+      answer: 'Check our shipping page for current delivery areas. Sign up for our newsletter to be notified of any expansion.'
     },
     {
       category: 'shipping',
@@ -66,7 +67,7 @@ export default function FAQsPage() {
     {
       category: 'returns',
       question: 'What is your return policy?',
-      answer: `We have a 24-hour return policy: you have 24 hours after receiving your item to request a return if it’s faulty, damaged, or not what you requested. Due to hygiene reasons we cannot accept refunds for other reasons. Items must be unworn/unused, with tags and original packaging; you’ll need the receipt or proof of purchase. Contact us first on WhatsApp ${contactPhone} or ${contactEmail}—we’ll send a return label and instructions if accepted. See our Refund Policy page for full details.`
+      answer: `Please review our Refund Policy page for full return eligibility, process, and timelines. Items should be unworn/unused, with tags and original packaging, and you will need proof of purchase. Contact us first on WhatsApp ${contactPhone} or ${contactEmail} so we can guide you through the approved return process.`
     },
     {
       category: 'returns',
@@ -76,7 +77,7 @@ export default function FAQsPage() {
     {
       category: 'returns',
       question: 'Who pays for return shipping?',
-      answer: 'If you\'re returning due to a defect or our error, we cover return shipping. For change-of-mind returns, customers pay return shipping costs (GHS 15 standard rate). Free shipping on returns for defective items.'
+      answer: 'If you\'re returning due to a defect or our error, we cover return shipping. For change-of-mind returns, customers may pay return shipping. Free shipping on returns for defective items.'
     },
     {
       category: 'returns',
@@ -86,7 +87,7 @@ export default function FAQsPage() {
     {
       category: 'payment',
       question: 'What payment methods do you accept?',
-      answer: 'We accept MTN Mobile Money, Vodafone Cash, AirtelTigo Money, Visa/Mastercard credit and debit cards, and Cash on Delivery (available for orders under GHS 1,000). All payments are processed securely.'
+      answer: 'We accept major credit and debit cards, digital wallets, and other methods. See checkout for options. All payments are processed securely.'
     },
     {
       category: 'payment',
@@ -96,7 +97,7 @@ export default function FAQsPage() {
     {
       category: 'payment',
       question: 'Can I pay in instalments?',
-      answer: 'Yes! We offer payment plans through our partners for purchases over GHS 500. Select "Pay in Instalments" at checkout to see available options. Approval is instant and no interest is charged.'
+      answer: 'Payment plans may be available for larger purchases. Select "Pay in Instalments" at checkout if available. Configure in Admin → Settings.'
     },
     {
       category: 'payment',
@@ -131,13 +132,13 @@ export default function FAQsPage() {
     {
       category: 'account',
       question: 'What are loyalty points and how do they work?',
-      answer: 'Earn 1 point for every GHS 10 spent. 100 points = GHS 10 discount on your next purchase. Points are automatically added to your account after each order. Check your points balance in your account dashboard.'
+      answer: 'Earn points for every purchase. Points can be redeemed for discounts. Check your account dashboard for your balance and redemption options.'
     }
   ];
 
   const filteredFAQs = faqs.filter(faq => {
     const matchesCategory = activeCategory === 'all' || faq.category === activeCategory;
-    const matchesSearch = searchQuery === '' || 
+    const matchesSearch = searchQuery === '' ||
       faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
       faq.answer.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -175,11 +176,10 @@ export default function FAQsPage() {
             <button
               key={category.id}
               onClick={() => setActiveCategory(category.id)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all whitespace-nowrap ${
-                activeCategory === category.id
-                  ? 'bg-gray-900 text-white shadow-lg'
+              className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all whitespace-nowrap ${activeCategory === category.id
+                  ? 'bg-primary text-white shadow-lg'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                }`}
             >
               <i className={`${category.icon} text-lg`}></i>
               {category.name}
@@ -217,7 +217,7 @@ export default function FAQsPage() {
         )}
       </AnimatedSection>
 
-      <AnimatedSection className="bg-gradient-to-br from-gray-900 to-gray-900 py-16">
+      <AnimatedSection className="bg-gradient-to-br from-primary to-primary-dark py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <i className="ri-customer-service-2-line text-3xl text-white"></i>
@@ -235,10 +235,10 @@ export default function FAQsPage() {
               Contact Support
             </Link>
             <a
-              href="https://wa.me/233595211414"
+              href={`https://wa.me/233${(contactPhone || '').replace(/\s/g, '').replace(/^0/, '')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-gray-700 text-white px-8 py-4 rounded-full font-medium hover:bg-gray-600 transition-colors whitespace-nowrap"
+              className="inline-flex items-center gap-2 bg-white/20 text-white px-8 py-4 rounded-full font-medium hover:bg-white/30 transition-colors whitespace-nowrap"
             >
               <i className="ri-whatsapp-line text-lg"></i>
               Chat on WhatsApp

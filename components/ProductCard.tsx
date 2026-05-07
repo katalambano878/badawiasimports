@@ -4,6 +4,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import LazyImage from './LazyImage';
 import { useCart } from '@/context/CartContext';
+import { useCMS } from '@/context/CMSContext';
+import { useWishlist } from '@/context/WishlistContext';
+import { formatPrice as formatCurrency } from '@/lib/formatCurrency';
 
 // Map common color names to hex values for swatches
 const COLOR_MAP: Record<string, string> = {
@@ -43,6 +46,8 @@ interface ProductCardProps {
   name: string;
   price: number;
   originalPrice?: number;
+  salePrice?: number | null;
+  isSaleActive?: boolean;
   image: string;
   rating?: number;
   reviewCount?: number;
@@ -62,6 +67,8 @@ export default function ProductCard({
   name,
   price,
   originalPrice,
+  salePrice,
+  isSaleActive = false,
   image,
   rating = 5,
   reviewCount = 0,
@@ -75,111 +82,210 @@ export default function ProductCard({
   brand,
 }: ProductCardProps) {
   const { addToCart } = useCart();
+  const { getSetting } = useCMS();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const currencySymbol = getSetting('currency_symbol') || '$';
   const [activeColor, setActiveColor] = useState<string | null>(null);
-  const displayPrice = hasVariants && minVariantPrice ? minVariantPrice : price;
-  const discount = originalPrice ? Math.round((1 - displayPrice / originalPrice) * 100) : 0;
-  const MAX_SWATCHES = 5;
+  const [added, setAdded] = useState(false);
 
-  const formatPrice = (val: number) => `GH₵${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const showSalePrice = isSaleActive && salePrice != null && salePrice > 0 && salePrice < price;
+  const basePrice = hasVariants && minVariantPrice ? minVariantPrice : price;
+  const displayPrice = showSalePrice ? salePrice : basePrice;
+  const strikePrice = showSalePrice ? price : originalPrice;
+  const discount = strikePrice && strikePrice > displayPrice
+    ? Math.round((1 - displayPrice / strikePrice) * 100)
+    : 0;
+  const saleBadge = showSalePrice ? 'Sale' : badge;
+  const MAX_SWATCHES = 5;
+  const inWishlist = isInWishlist(id);
+
+  const formatPrice = (val: number) => formatCurrency(val, currencySymbol);
+
+  const toggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (inWishlist) {
+      removeFromWishlist(id);
+    } else {
+      addToWishlist({
+        id, name, price: displayPrice, originalPrice, image, rating, reviewCount, badge, inStock, slug,
+      });
+    }
+  };
+
+  const handleAdd = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!inStock) return;
+    addToCart({ id, name, price: displayPrice, image, quantity: moq, slug, maxStock, moq });
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1400);
+  };
 
   return (
-    <div className="group bg-white h-full flex flex-col">
-      {/* Image: full width, square-ish, no rounded corners */}
+    <div className="group relative flex h-full flex-col">
+      {/* Image wrapper */}
       <Link
         href={`/product/${slug}`}
-        className="relative block aspect-[3/4] overflow-hidden bg-gray-100"
+        className="relative block aspect-[3/4] overflow-hidden rounded-2xl bg-[#F7F8FC]"
       >
         <LazyImage
           src={image}
           alt={name}
-          className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-500"
+          className={`h-full w-full object-cover object-center transition-all duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            inStock ? 'group-hover:scale-[1.06]' : 'grayscale-[40%]'
+          }`}
         />
-        {badge && (
-          <span className="absolute top-3 left-3 bg-white/90 text-gray-900 text-[10px] uppercase tracking-wider font-semibold px-2.5 py-1">
-            {badge}
+
+        {/* Gradient scrim on hover for action button readability */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/30 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+
+        {/* Badges (top-left stack) */}
+        <div className="absolute left-3 top-3 flex flex-col gap-1.5">
+        {saleBadge && (
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest shadow-sm backdrop-blur ${showSalePrice ? 'bg-red-500 text-white' : 'bg-white/95 text-primary'}`}>
+            {saleBadge}
           </span>
         )}
         {discount > 0 && (
-          <span className="absolute top-3 left-3 bg-red-50 text-red-700 text-[10px] uppercase tracking-wider font-semibold px-2.5 py-1">
+            <span className="rounded-full bg-[#CC1414] px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white shadow-sm">
             -{discount}%
           </span>
         )}
         {!inStock && (
-          <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-            <span className="text-gray-900 text-sm font-medium">Out of Stock</span>
+            <span className="rounded-full bg-gray-900/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white shadow-sm">
+              Sold out
+            </span>
+          )}
+        </div>
+
+        {/* Wishlist button (top-right) */}
+        <button
+          type="button"
+          onClick={toggleWishlist}
+          aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+          className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur transition-all duration-300 ${
+            inWishlist
+              ? 'bg-[#CC1414] text-white shadow-[0_8px_20px_-8px_rgba(204,20,20,0.6)]'
+              : 'bg-white/90 text-primary hover:bg-white hover:scale-110'
+          }`}
+        >
+          <i className={`${inWishlist ? 'ri-heart-fill' : 'ri-heart-line'} text-base`} />
+        </button>
+
+        {/* Slide-up action bar */}
+        {inStock && (
+          <div className="absolute inset-x-3 bottom-3 translate-y-2 opacity-0 transition-all duration-500 ease-out group-hover:translate-y-0 group-hover:opacity-100 md:block">
+            {hasVariants ? (
+              <Link
+                href={`/product/${slug}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/95 px-4 py-3 text-xs font-black uppercase tracking-widest text-primary shadow-[0_10px_30px_-10px_rgba(13,27,69,0.4)] backdrop-blur transition-colors hover:bg-primary hover:text-white"
+              >
+                Select Options <i className="ri-arrow-right-line text-base" />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={handleAdd}
+                className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest shadow-[0_10px_30px_-10px_rgba(13,27,69,0.4)] backdrop-blur transition-all ${
+                  added
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-white/95 text-primary hover:bg-primary hover:text-white'
+                }`}
+              >
+                {added ? (
+                  <>
+                    Added <i className="ri-check-line text-base" />
+                  </>
+                ) : (
+                  <>
+                    Add to Cart <i className="ri-shopping-bag-line text-base" />
+                  </>
+                )}
+              </button>
+            )}
           </div>
         )}
       </Link>
 
-      {/* Product info: left-aligned, serif name/brand, bold price */}
-      <div className="flex flex-col flex-grow pt-4 pb-2 text-left">
-        <Link href={`/product/${slug}`} className="mb-0.5">
-          <h3 className="font-serif text-[1.05rem] leading-snug text-black font-medium line-clamp-2 group-hover:underline">
-            {name}
-          </h3>
-        </Link>
+      {/* Info */}
+      <div className="flex flex-grow flex-col pt-4 text-left">
         {brand && (
-          <p className="font-serif text-sm text-black/80 font-normal mb-1.5">
+          <p className="mb-1 text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">
             {brand}
           </p>
         )}
 
+        <Link href={`/product/${slug}`}>
+          <h3 className="font-serif text-[1.02rem] leading-snug text-primary line-clamp-2 transition-colors group-hover:text-[#1ABCDF]">
+            {name}
+          </h3>
+        </Link>
+
+        {(rating || reviewCount) > 0 && (
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <div className="flex items-center">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <i
+                  key={s}
+                  className={`${
+                    s <= Math.round(rating)
+                      ? 'ri-star-fill text-amber-400'
+                      : 'ri-star-line text-gray-300'
+                  } text-xs`}
+                />
+              ))}
+            </div>
+            {reviewCount > 0 && (
+              <span className="text-[11px] text-gray-400">({reviewCount})</span>
+            )}
+          </div>
+        )}
+
         {colorVariants.length > 0 && (
-          <div className="flex items-center gap-1.5 mb-2">
+          <div className="mt-2 flex items-center gap-1.5">
             {colorVariants.slice(0, MAX_SWATCHES).map((color) => (
               <button
                 key={color.name}
                 title={color.name}
                 onClick={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   setActiveColor(activeColor === color.name ? null : color.name);
                 }}
-                className={`w-4 h-4 rounded-full border transition-all duration-200 flex-shrink-0 ${
+                className={`h-4 w-4 flex-shrink-0 rounded-full border transition-all duration-200 ${
                   activeColor === color.name
-                    ? 'ring-2 ring-offset-1 ring-black'
+                    ? 'ring-2 ring-offset-1 ring-primary'
                     : 'hover:scale-110'
                 } ${color.hex === '#FFFFFF' ? 'border-gray-300' : 'border-transparent'}`}
                 style={{ backgroundColor: color.hex }}
               />
             ))}
             {colorVariants.length > MAX_SWATCHES && (
-              <span className="text-xs text-gray-400 ml-0.5">+{colorVariants.length - MAX_SWATCHES}</span>
+              <span className="ml-0.5 text-[11px] text-gray-400">
+                +{colorVariants.length - MAX_SWATCHES}
+              </span>
             )}
           </div>
         )}
 
-        <div className="mb-3">
-          {hasVariants && minVariantPrice != null ? (
-            <span className="font-sans text-xl font-bold text-black">From {formatPrice(minVariantPrice)}</span>
+        <div className="mt-3 flex items-baseline gap-2">
+          {hasVariants && minVariantPrice != null && !showSalePrice ? (
+            <span className="font-serif text-xl font-bold text-primary">
+              From {formatPrice(minVariantPrice)}
+            </span>
           ) : (
-            <span className="font-sans text-xl font-bold text-black">{formatPrice(price)}</span>
+            <span className={`font-serif text-xl font-bold ${showSalePrice ? 'text-red-600' : 'text-primary'}`}>
+              {formatPrice(displayPrice)}
+            </span>
           )}
-          {originalPrice && originalPrice > price && (
-            <span className="font-sans text-sm text-gray-500 line-through ml-2">{formatPrice(originalPrice)}</span>
+          {strikePrice != null && strikePrice > displayPrice && (
+            <span className="text-sm text-gray-400 line-through">
+              {formatPrice(strikePrice)}
+            </span>
           )}
         </div>
-
-        {/* Add to cart: full width, thin black border, transparent bg */}
-        {hasVariants ? (
-          <Link
-            href={`/product/${slug}`}
-            className="w-full border border-black py-3 px-4 text-center text-black font-medium text-sm hover:bg-black hover:text-white transition-colors"
-          >
-            Select Options
-          </Link>
-        ) : (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              addToCart({ id, name, price, image, quantity: moq, slug, maxStock, moq });
-            }}
-            disabled={!inStock}
-            className="w-full border border-black py-3 px-4 text-center text-black font-medium text-sm hover:bg-black hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Add to cart
-          </button>
-        )}
       </div>
     </div>
   );

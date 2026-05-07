@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
-export const alt = 'Luxury Strand Haven — Premium Wigs & Hair in Ghana';
+export const alt = "BADAWIA'S IMPORTS — Quality Imports Across Ghana";
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -13,73 +13,62 @@ export default async function OGImage() {
           width: '100%',
           height: '100%',
           display: 'flex',
-          background: '#0a0a0a',
+          background: 'linear-gradient(135deg, #060E28 0%, #0D1B45 60%, #1a2d6e 100%)',
           fontFamily: 'serif',
           position: 'relative',
           overflow: 'hidden',
         }}
       >
-        {/* Gold left accent bar */}
-        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, background: 'linear-gradient(to bottom, #C9A84C, #F5D78E, #C9A84C)', display: 'flex' }} />
+        {/* Red accent bar */}
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 8, background: '#CC1414', display: 'flex' }} />
 
-        {/* Content */}
+        {/* Cyan top stripe */}
+        <div style={{ position: 'absolute', top: 0, left: 8, right: 0, height: 4, background: '#1ABCDF', display: 'flex' }} />
+
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px 80px', flex: 1 }}>
-          {/* Brand tag */}
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 28 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#C9A84C', marginRight: 10 }} />
-            <span style={{ color: '#C9A84C', fontSize: 16, letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: 'sans-serif', fontWeight: 600 }}>
-              Premium Hair Collection · Ghana
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#CC1414', marginRight: 12 }} />
+            <span style={{ color: '#1ABCDF', fontSize: 15, letterSpacing: '0.25em', textTransform: 'uppercase', fontFamily: 'sans-serif', fontWeight: 700 }}>
+              Quality Imports Across Ghana
             </span>
           </div>
 
-          {/* Headline */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ color: '#F5D78E', fontSize: 76, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
-              Luxury
+            <span style={{ color: '#FFFFFF', fontSize: 68, fontWeight: 900, lineHeight: 1.0, marginBottom: 4, letterSpacing: '-1px' }}>
+              BADAWIA&apos;S
             </span>
-            <span style={{ color: '#ffffff', fontSize: 76, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
-              Strand Haven
-            </span>
-          </div>
-
-          {/* Divider */}
-          <div style={{ width: 80, height: 2, background: '#C9A84C', marginTop: 24, marginBottom: 24, display: 'flex' }} />
-
-          {/* Services */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ color: '#e0e0e0', fontSize: 22, fontFamily: 'sans-serif', fontWeight: 400 }}>
-              Custom Wigs · Bundles · Closures & Frontals
-            </span>
-            <span style={{ color: '#a0a0a0', fontSize: 18, fontFamily: 'sans-serif' }}>
-              100% Human Hair · HD Lace · Fast Delivery Across Ghana
+            <span style={{ color: '#1ABCDF', fontSize: 52, fontWeight: 700, lineHeight: 1.0, letterSpacing: '4px' }}>
+              IMPORTS
             </span>
           </div>
 
-          {/* URL */}
-          <div style={{ display: 'flex', marginTop: 40 }}>
-            <span style={{ color: '#C9A84C', fontSize: 15, fontFamily: 'sans-serif', letterSpacing: '0.05em' }}>
-              luxurystrandhaven.com
+          <div style={{ width: 80, height: 3, background: '#CC1414', marginTop: 24, marginBottom: 24, display: 'flex' }} />
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: 20, fontFamily: 'sans-serif', fontWeight: 500 }}>
+              📍 Tamale &amp; Accra, Ghana
+            </span>
+            <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 17, fontFamily: 'sans-serif', fontWeight: 400 }}>
+              📞 0539 781 532 &nbsp;·&nbsp; @badawias_imports1
             </span>
           </div>
         </div>
 
-        {/* Right decorative panel */}
         <div style={{
-          width: 380,
+          width: 340,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          background: 'linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%)',
-          borderLeft: '1px solid #2a2a2a',
+          background: 'rgba(26,188,223,0.08)',
+          borderLeft: '1px solid rgba(26,188,223,0.25)',
           padding: 40,
           gap: 16,
         }}>
           {[
-            { emoji: '👑', label: 'Custom Luxury Wigs' },
-            { emoji: '✨', label: 'HD Lace Frontals' },
-            { emoji: '💫', label: 'Raw Hair Bundles' },
-            { emoji: '🎓', label: 'Hair Academia' },
+            { emoji: '✈️', label: 'Air Freight' },
+            { emoji: '🚢', label: 'Sea Freight' },
+            { emoji: '🚚', label: 'Fast Delivery' },
           ].map((item) => (
             <div key={item.label} style={{
               display: 'flex',
@@ -87,12 +76,12 @@ export default async function OGImage() {
               gap: 12,
               width: '100%',
               padding: '12px 16px',
-              background: '#1e1e1e',
+              background: 'rgba(255,255,255,0.06)',
               borderRadius: 8,
-              border: '1px solid #2a2a2a',
+              border: '1px solid rgba(255,255,255,0.12)',
             }}>
               <span style={{ fontSize: 22 }}>{item.emoji}</span>
-              <span style={{ color: '#e0e0e0', fontSize: 16, fontFamily: 'sans-serif', fontWeight: 500 }}>{item.label}</span>
+              <span style={{ color: '#FFFFFF', fontSize: 15, fontFamily: 'sans-serif', fontWeight: 600 }}>{item.label}</span>
             </div>
           ))}
         </div>

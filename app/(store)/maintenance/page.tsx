@@ -58,23 +58,23 @@ export default function MaintenancePage() {
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <a
-              href="mailto:contact@example.com"
+              href="mailto:info@badawiasimports.com"
               className="inline-flex items-center gap-2 bg-white text-gray-900 px-6 py-3 rounded-full font-medium hover:bg-gray-50 transition-colors border border-gray-200 whitespace-nowrap"
             >
               <i className="ri-mail-line"></i>
               Email Us
             </a>
             <a
-              href="https://wa.me/233595211414"
+              href={`https://wa.me/${(process.env.NEXT_PUBLIC_STORE_PHONE || '').replace(/\D/g, '')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-full font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
+              className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-medium hover:bg-primary transition-colors whitespace-nowrap"
             >
               <i className="ri-whatsapp-line"></i>
               WhatsApp
             </a>
             <a
-              href="tel:+233595211414"
+              href={`tel:${process.env.NEXT_PUBLIC_STORE_PHONE || ''}`}
               className="inline-flex items-center gap-2 bg-white text-gray-900 px-6 py-3 rounded-full font-medium hover:bg-gray-50 transition-colors border border-gray-200 whitespace-nowrap"
             >
               <i className="ri-phone-line"></i>

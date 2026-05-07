@@ -53,6 +53,8 @@ export default function OrderBumpUpsell({ products, onToggle }: OrderBumpUpsellP
                 <img 
                   src={product.image} 
                   alt={product.name}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover object-top"
                 />
               </div>
@@ -75,7 +77,7 @@ export default function OrderBumpUpsell({ products, onToggle }: OrderBumpUpsellP
 
               <div className={`w-8 h-8 flex items-center justify-center rounded-full border-2 transition-colors ${
                 product.selected
-                  ? 'border-gray-900 bg-gray-900'
+                  ? 'border-gray-900 bg-primary'
                   : 'border-gray-300'
               }`}>
                 {product.selected && <i className="ri-check-line text-white"></i>}

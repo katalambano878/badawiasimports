@@ -61,15 +61,49 @@ export default function AdminCategoriesPage() {
   };
 
   const handleDelete = async (categoryId: string) => {
-    if (confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
-      try {
-        const { error } = await supabase.from('categories').delete().eq('id', categoryId);
-        if (error) throw error;
-        setCategories(categories.filter(c => c.id !== categoryId));
-        alert('Category deleted successfully');
-      } catch (err: any) {
-        alert('Error deleting: ' + err.message);
+    const category = categories.find(c => c.id === categoryId);
+    const categoryName = category?.name || 'this category';
+
+    try {
+      // Pre-check: count products & sub-categories that depend on this category
+      const [{ count: productCount }, { count: childCount }] = await Promise.all([
+        supabase.from('products').select('*', { count: 'exact', head: true }).eq('category_id', categoryId),
+        supabase.from('categories').select('*', { count: 'exact', head: true }).eq('parent_id', categoryId),
+      ]);
+
+      let confirmMsg = `Delete category "${categoryName}"?\n\nThis action cannot be undone.`;
+      if (productCount && productCount > 0) {
+        confirmMsg = `Delete category "${categoryName}"?\n\n⚠ ${productCount} product${productCount > 1 ? 's are' : ' is'} assigned to this category — they will be set to "Uncategorized" but not deleted.\n\nThis action cannot be undone.`;
       }
+      if (childCount && childCount > 0) {
+        confirmMsg += `\n\nIt also has ${childCount} sub-categor${childCount > 1 ? 'ies' : 'y'} which will become top-level.`;
+      }
+
+      if (!confirm(confirmMsg)) return;
+
+      // Manually unset references for installs that haven't run the cascade migration
+      if (productCount && productCount > 0) {
+        await supabase.from('products').update({ category_id: null }).eq('category_id', categoryId);
+      }
+      if (childCount && childCount > 0) {
+        await supabase.from('categories').update({ parent_id: null }).eq('parent_id', categoryId);
+      }
+
+      const { error } = await supabase.from('categories').delete().eq('id', categoryId);
+
+      if (error) {
+        if (error.code === '23503') {
+          alert(`Cannot delete "${categoryName}".\n\nIt's still referenced by other records. Run the latest database migration to enable safe deletes.`);
+        } else {
+          alert(`Error deleting "${categoryName}":\n\n${error.message}`);
+        }
+        return;
+      }
+
+      setCategories(categories.filter(c => c.id !== categoryId));
+      alert(`"${categoryName}" was deleted successfully.`);
+    } catch (err: any) {
+      alert(`Unexpected error:\n\n${err.message || err}`);
     }
   };
 
@@ -117,7 +151,7 @@ export default function AdminCategoriesPage() {
         description: formData.description,
         image_url: formData.image_url,
         parent_id: formData.parent_id || null, // Handle empty string as null
-        status: formData.status,
+        status: formData.status as 'active' | 'inactive',
         metadata: {
           featured: formData.featured
         }
@@ -176,7 +210,7 @@ export default function AdminCategoriesPage() {
             setFormData({ name: '', slug: '', description: '', image_url: '', parent_id: '', featured: false, status: 'active' });
             setShowAddModal(true);
           }}
-          className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer"
+          className="bg-primary hover:bg-primary text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer"
         >
           <i className="ri-add-line mr-2"></i>
           Add Category
@@ -430,7 +464,7 @@ export default function AdminCategoriesPage() {
               <button
                 onClick={handleSubmit}
                 disabled={saving || uploading}
-                className={`px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer flex items-center ${saving ? 'opacity-70' : ''}`}
+                className={`px-6 py-3 bg-primary hover:bg-primary text-white rounded-lg font-semibold transition-colors whitespace-nowrap cursor-pointer flex items-center ${saving ? 'opacity-70' : ''}`}
               >
                 {saving && <i className="ri-loader-4-line animate-spin mr-2"></i>}
                 {showAddModal ? 'Add Category' : 'Save Changes'}

@@ -13,11 +13,11 @@ export default function MobileBottomNav() {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-primary-soft/60 z-50 safe-area-bottom">
       <div className="grid grid-cols-5 h-16">
         <Link
           href="/"
-          className={`flex flex-col items-center justify-center space-y-1 transition-colors ${isActive('/') ? 'text-gray-900' : 'text-gray-600'
+          className={`flex flex-col items-center justify-center space-y-1 transition-colors ${isActive('/') ? 'text-primary' : 'text-gray-600'
             }`}
         >
           <div className="w-6 h-6 flex items-center justify-center">
@@ -28,7 +28,7 @@ export default function MobileBottomNav() {
 
         <Link
           href="/shop"
-          className={`flex flex-col items-center justify-center space-y-1 transition-colors ${isActive('/shop') ? 'text-gray-900' : 'text-gray-600'
+          className={`flex flex-col items-center justify-center space-y-1 transition-colors ${isActive('/shop') ? 'text-primary' : 'text-gray-600'
             }`}
         >
           <div className="w-6 h-6 flex items-center justify-center">
@@ -39,13 +39,13 @@ export default function MobileBottomNav() {
 
         <Link
           href="/cart"
-          className={`flex flex-col items-center justify-center space-y-1 transition-colors relative ${isActive('/cart') ? 'text-gray-900' : 'text-gray-600'
+          className={`flex flex-col items-center justify-center space-y-1 transition-colors relative ${isActive('/cart') ? 'text-primary' : 'text-gray-600'
             }`}
         >
           <div className="w-6 h-6 flex items-center justify-center relative">
             <i className={`${isActive('/cart') ? 'ri-shopping-cart-fill' : 'ri-shopping-cart-line'} text-xl`}></i>
             {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+              <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                 {cartCount}
               </span>
             )}
@@ -55,13 +55,13 @@ export default function MobileBottomNav() {
 
         <Link
           href="/wishlist"
-          className={`flex flex-col items-center justify-center space-y-1 transition-colors relative ${isActive('/wishlist') ? 'text-gray-900' : 'text-gray-600'
+          className={`flex flex-col items-center justify-center space-y-1 transition-colors relative ${isActive('/wishlist') ? 'text-primary' : 'text-gray-600'
             }`}
         >
           <div className="w-6 h-6 flex items-center justify-center relative">
             <i className={`${isActive('/wishlist') ? 'ri-heart-3-fill' : 'ri-heart-3-line'} text-xl`}></i>
             {wishlistCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+              <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                 {wishlistCount}
               </span>
             )}
@@ -71,7 +71,7 @@ export default function MobileBottomNav() {
 
         <Link
           href="/account"
-          className={`flex flex-col items-center justify-center space-y-1 transition-colors ${isActive('/account') ? 'text-gray-900' : 'text-gray-600'
+          className={`flex flex-col items-center justify-center space-y-1 transition-colors ${isActive('/account') ? 'text-primary' : 'text-gray-600'
             }`}
         >
           <div className="w-6 h-6 flex items-center justify-center">

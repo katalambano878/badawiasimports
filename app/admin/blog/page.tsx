@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useState } from 'react';
@@ -12,7 +12,7 @@ export default function AdminBlogPage() {
       id: 1,
       title: '10 Essential Tips for Creating a Minimalist Home',
       slug: '10-essential-tips-minimalist-home',
-      author: 'Admin',
+      author: 'Store Team',
       category: 'Interior Design',
       image: 'https://placehold.co/400x400?text=Sample',
       excerpt: 'Discover how to transform your living space into a serene minimalist haven with these practical tips...',
@@ -26,7 +26,7 @@ export default function AdminBlogPage() {
       id: 2,
       title: 'The Art of Choosing Perfect Home Textiles',
       slug: 'art-of-choosing-perfect-home-textiles',
-      author: 'Michael Chen',
+      author: 'Store Team',
       category: 'Home Styling',
       image: 'https://placehold.co/400x400?text=Sample',
       excerpt: 'Learn the secrets to selecting textiles that elevate your home aesthetic and comfort...',
@@ -40,7 +40,7 @@ export default function AdminBlogPage() {
       id: 3,
       title: 'Sustainable Living: Eco-Friendly Home Products Guide',
       slug: 'sustainable-living-eco-friendly-guide',
-      author: 'Emma Williams',
+      author: 'Store Team',
       category: 'Sustainability',
       image: 'https://placehold.co/400x400?text=Sample',
       excerpt: 'Make conscious choices for your home with our comprehensive guide to sustainable products...',
@@ -54,7 +54,7 @@ export default function AdminBlogPage() {
       id: 4,
       title: 'Lighting Design: Creating Ambiance in Every Room',
       slug: 'lighting-design-creating-ambiance',
-      author: 'David Martinez',
+      author: 'Store Team',
       category: 'Interior Design',
       image: 'https://placehold.co/400x400?text=Sample',
       excerpt: 'Master the art of lighting to transform the mood and functionality of your spaces...',
@@ -68,7 +68,7 @@ export default function AdminBlogPage() {
       id: 5,
       title: 'Gift Guide: Thoughtful Home Accessories',
       slug: 'gift-guide-thoughtful-home-accessories',
-      author: 'Admin',
+      author: 'Store Team',
       category: 'Gift Ideas',
       image: 'https://placehold.co/400x400?text=Sample',
       excerpt: 'Find the perfect gifts for home lovers with our carefully curated selection...',
@@ -82,7 +82,7 @@ export default function AdminBlogPage() {
       id: 6,
       title: 'Color Psychology: Choosing the Right Palette',
       slug: 'color-psychology-choosing-palette',
-      author: 'Michael Chen',
+      author: 'Store Team',
       category: 'Home Styling',
       image: 'https://placehold.co/400x400?text=Sample',
       excerpt: 'Understand how colors affect mood and create the perfect atmosphere in your home...',
@@ -123,7 +123,7 @@ export default function AdminBlogPage() {
           <h1 className="text-3xl font-bold text-gray-900">Blog Posts</h1>
           <p className="text-gray-600 mt-1">Create and manage your blog content</p>
         </div>
-        <Link href="/admin/blog/new" className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap">
+        <Link href="/admin/blog/new" className="bg-primary hover:bg-primary text-white px-6 py-3 rounded-lg font-semibold transition-colors whitespace-nowrap">
           <i className="ri-add-line mr-2"></i>
           New Post
         </Link>
@@ -196,7 +196,7 @@ export default function AdminBlogPage() {
               {selectedPosts.length} post{selectedPosts.length > 1 ? 's' : ''} selected
             </p>
             <div className="flex items-center space-x-2">
-              <button className="px-4 py-2 bg-gray-700 hover:bg-gray-900 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
+              <button className="px-4 py-2 bg-gray-700 hover:bg-primary text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
                 Publish
               </button>
               <button className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
@@ -252,7 +252,7 @@ export default function AdminBlogPage() {
                   <div className="flex items-center space-x-2">
                     <Link
                       href={`/admin/blog/${post.id}`}
-                      className="flex-1 bg-gray-900 hover:bg-gray-800 text-white py-2 rounded-lg text-sm font-medium text-center transition-colors whitespace-nowrap"
+                      className="flex-1 bg-primary hover:bg-primary text-white py-2 rounded-lg text-sm font-medium text-center transition-colors whitespace-nowrap"
                     >
                       Edit Post
                     </Link>
@@ -348,7 +348,7 @@ export default function AdminBlogPage() {
             <button className="w-10 h-10 flex items-center justify-center border-2 border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
               <i className="ri-arrow-left-s-line text-xl text-gray-600"></i>
             </button>
-            <button className="w-10 h-10 flex items-center justify-center bg-gray-900 text-white rounded-lg font-semibold">1</button>
+            <button className="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-lg font-semibold">1</button>
             <button className="w-10 h-10 flex items-center justify-center border-2 border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
               <i className="ri-arrow-right-s-line text-xl text-gray-600"></i>
             </button>
