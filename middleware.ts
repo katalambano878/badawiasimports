@@ -1,80 +1,159 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createClient } from '@supabase/supabase-js';
+import { jwtVerify } from 'jose';
 
-/**
- * Admin gate (P1-1).
- *
- * Before this middleware existed in this form, /admin/* HTML and JS bundles were
- * served to anyone who asked, and the "are you an admin?" check ran in the
- * browser inside app/admin/layout.tsx. That meant unauthenticated visitors could
- * still download the admin shell, see internal API endpoints in the JS bundle,
- * and probe around. (Data was safe because Supabase RLS still blocked them, but
- * the surface area was unnecessarily exposed.)
- *
- * Now: every request to /admin/* (except /admin/login) is intercepted here. We
- * read the session cookie, look up the user's role in `profiles`, and redirect
- * to /admin/login unless role is 'admin' or 'staff'. The admin pages never even
- * reach the visitor's browser unless they pass.
- *
- * RLS remains the data-layer guard — this middleware is defense in depth at the
- * surface layer.
- */
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const usePlainPg = process.env.NEXT_PUBLIC_USE_PLAIN_PG === 'true';
+
+function extractToken(request: NextRequest): string | undefined {
+  let token = request.cookies.get('sb-access-token')?.value;
+
+  if (!token) {
+    const projectRef = supabaseUrl?.split('//')[1]?.split('.')[0];
+    if (projectRef) {
+      token = request.cookies.get(`sb-${projectRef}-auth-token`)?.value;
+    }
+  }
+
+  if (!token) {
+    for (const [name, cookie] of request.cookies) {
+      if (name.startsWith('sb-') && (name.endsWith('-auth-token') || name.includes('auth'))) {
+        try {
+          const parsed = JSON.parse(cookie.value);
+          if (Array.isArray(parsed) && parsed[0]) {
+            token = parsed[0];
+          } else if (typeof parsed === 'object' && parsed.access_token) {
+            token = parsed.access_token;
+          } else if (typeof parsed === 'string') {
+            token = parsed;
+          }
+        } catch {
+          token = cookie.value;
+        }
+        if (token) break;
+      }
+    }
+  }
+
+  return token;
+}
+
+async function verifyPlainPgAdmin(token: string): Promise<{ ok: boolean; userId?: string; role?: string }> {
+  const secret =
+    process.env.AUTH_JWT_SECRET ||
+    process.env.JWT_SECRET ||
+    process.env.SUPABASE_JWT_SECRET;
+  if (!secret) return { ok: false };
+
+  try {
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
+    if (payload.typ === 'refresh') return { ok: false };
+    const userId = typeof payload.sub === 'string' ? payload.sub : undefined;
+    if (!userId) return { ok: false };
+    const appMeta = (payload.app_metadata || {}) as { role?: string };
+    const role = appMeta.role;
+    if (role !== 'admin' && role !== 'staff') return { ok: false };
+    return { ok: true, userId, role };
+  } catch {
+    return { ok: false };
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const response = NextResponse.next();
 
-  if (!pathname.startsWith('/admin')) {
-    return response;
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  if (pathname.startsWith('/admin')) {
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+
+    if (pathname === '/admin/login') {
+      return response;
+    }
+
+    const token = extractToken(request);
+
+    if (!token) {
+      const loginUrl = new URL('/admin/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    if (usePlainPg) {
+      const verified = await verifyPlainPgAdmin(token);
+      if (!verified.ok) {
+        const loginUrl = new URL('/admin/login', request.url);
+        loginUrl.searchParams.set('redirect', pathname);
+        loginUrl.searchParams.set('error', 'session_expired');
+        return NextResponse.redirect(loginUrl);
+      }
+      if (verified.userId) response.headers.set('x-user-id', verified.userId);
+      if (verified.role) response.headers.set('x-user-role', verified.role);
+      return response;
+    }
+
+    if (supabaseServiceKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser(token);
+
+        if (error || !user) {
+          const loginUrl = new URL('/admin/login', request.url);
+          loginUrl.searchParams.set('redirect', pathname);
+          loginUrl.searchParams.set('error', 'session_expired');
+          return NextResponse.redirect(loginUrl);
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (!profile || (profile.role !== 'admin' && profile.role !== 'staff')) {
+          const loginUrl = new URL('/admin/login', request.url);
+          loginUrl.searchParams.set('error', 'unauthorized');
+          return NextResponse.redirect(loginUrl);
+        }
+
+        response.headers.set('x-user-id', user.id);
+        response.headers.set('x-user-role', profile.role);
+      } catch (err) {
+        console.error('[Middleware] Auth check error:', err);
+      }
+    }
   }
 
-  response.headers.set('X-Robots-Tag', 'noindex, nofollow');
-  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-
-  // The login page itself must always be reachable.
-  if (pathname === '/admin/login' || pathname.startsWith('/admin/login/')) {
-    return response;
-  }
-
-  const supabase = createSupabaseServerClient(request, response);
-
-  // getUser() validates the JWT against Supabase Auth (vs. getSession() which
-  // only decodes whatever's in the cookie). Use getUser for security gates.
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return redirectToLogin(request, response);
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError || !profile) {
-    return redirectToLogin(request, response, 'no_profile');
-  }
-
-  if (profile.role !== 'admin' && profile.role !== 'staff') {
-    return redirectToLogin(request, response, 'unauthorized');
+  if (
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/rest/') ||
+    pathname.startsWith('/auth/v1') ||
+    pathname.startsWith('/storage/')
+  ) {
+    response.headers.set('Cache-Control', 'no-store');
   }
 
   return response;
 }
 
-function redirectToLogin(request: NextRequest, response: NextResponse, errorCode?: string) {
-  const url = request.nextUrl.clone();
-  url.pathname = '/admin/login';
-  url.search = errorCode ? `?error=${encodeURIComponent(errorCode)}` : '';
-  const redirect = NextResponse.redirect(url);
-
-  // Preserve any session cookies that supabase-ssr just rotated onto `response`
-  // so refreshed tokens aren't dropped by the redirect.
-  response.cookies.getAll().forEach(c => redirect.cookies.set(c));
-  return redirect;
-}
-
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: [
+    '/admin/:path*',
+    '/api/:path*',
+    '/rest/:path*',
+    '/auth/v1/:path*',
+    '/storage/:path*',
+  ],
 };
