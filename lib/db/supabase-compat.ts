@@ -670,9 +670,16 @@ class QueryBuilder implements PromiseLike<{ data: any; error: any; count: number
         let related: Row[] = [];
         if (parentIds.length) {
           const ph = parentIds.map((_, i) => `$${i + 1}`).join(",");
-          // Prefer stable gallery order when embed selects a position column
+          // Prefer stable gallery order only on tables that actually have `position`
+          // (product_variants(*) was incorrectly ORDER BY position → homepage empty).
+          const tablesWithPosition = new Set([
+            "product_images",
+            "review_images",
+            "navigation_items",
+          ]);
           const orderBy =
-            embed.select.star || embed.select.columns.includes("position")
+            tablesWithPosition.has(embedTable) &&
+            (embed.select.star || embed.select.columns.includes("position"))
               ? ` ORDER BY ${ident("position")} ASC NULLS LAST`
               : "";
           const res = await pool.query(
