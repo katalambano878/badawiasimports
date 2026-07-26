@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { money } from '@/lib/format-money';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
@@ -263,8 +264,8 @@ export default function SalePricingPage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-900 truncate">{product.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-sm text-gray-400 line-through">GH₵{product.price.toFixed(2)}</span>
-                      <span className="text-sm font-bold text-red-600">GH₵{product.sale_price?.toFixed(2)}</span>
+                      <span className="text-sm text-gray-400 line-through">GH₵{money(product.price)}</span>
+                      <span className="text-sm font-bold text-red-600">GH₵{money(product.sale_price)}</span>
                       <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">{discount}% OFF</span>
                     </div>
                   </div>
@@ -327,7 +328,7 @@ export default function SalePricingPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-900 truncate">{product.name}</p>
-                    <p className="text-sm text-gray-500">Regular: GH₵{product.price.toFixed(2)}</p>
+                    <p className="text-sm text-gray-500">Regular: GH₵{money(product.price)}</p>
                   </div>
                   <div className="relative w-32">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">GH₵</span>

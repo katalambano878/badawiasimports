@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
@@ -18,14 +18,7 @@ import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-lim
  *     not enumerable.
  */
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-if (!supabaseServiceKey) {
-  console.error('[orders/lookup] SUPABASE_SERVICE_ROLE_KEY missing');
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function POST(request: Request) {
   try {
@@ -80,14 +73,14 @@ export async function POST(request: Request) {
         )
       `;
 
-    let { data: order, error } = await supabase
+    let { data: order, error } = await supabaseAdmin
       .from('orders')
       .select(selectCols)
       .eq('order_number', orderNumber)
       .maybeSingle();
 
     if (!order && !error && isUuid) {
-      const fallback = await supabase
+      const fallback = await supabaseAdmin
         .from('orders')
         .select(selectCols)
         .eq('id', orderNumber)

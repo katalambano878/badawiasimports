@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
@@ -13,14 +13,7 @@ import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-lim
  *   the service_role key behind a basic origin + rate-limit check.
  */
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-if (!supabaseServiceKey) {
-  console.error('[customers/upsert-from-order] SUPABASE_SERVICE_ROLE_KEY missing');
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const allowedOriginPattern = /^https?:\/\/(?:www\.)?(badawiasimports\.com|localhost(?::\d+)?|127\.0\.0\.1(?::\d+)?|.*\.vercel\.app)/i;
 
@@ -60,7 +53,7 @@ export async function POST(request: Request) {
     // Light anti-abuse: require an existing order with this email before letting
     // an arbitrary client upsert a customer record. Cuts off blind spam.
     if (order_number) {
-      const { data: order } = await supabase
+      const { data: order } = await supabaseAdmin
         .from('orders')
         .select('id')
         .eq('order_number', order_number)
@@ -71,7 +64,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const { error } = await supabase.rpc('upsert_customer_from_order', {
+    const { error } = await supabaseAdmin.rpc('upsert_customer_from_order', {
       p_email: email,
       p_phone: phone || null,
       p_full_name: full_name || null,

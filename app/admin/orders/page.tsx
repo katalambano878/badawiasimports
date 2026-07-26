@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { money } from '@/lib/format-money';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import ProductSalesStats from './ProductSalesStats';
@@ -289,7 +290,7 @@ export default function AdminOrdersPage() {
     const ok = window.confirm(
       `Mark order ${ref} as PAID?\n\n` +
       `Customer: ${getCustomerName(order)}\n` +
-      `Total: GH₵ ${(order.total ?? 0).toFixed(2)}\n\n` +
+      `Total: GH₵ ${money((order.total ?? 0))}\n\n` +
       `Only do this if you've already confirmed payment in your Moolre dashboard or received funds another way.`
     );
     if (!ok) return;
@@ -613,7 +614,7 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="py-4 px-4 text-gray-700 text-sm whitespace-nowrap">{formatDate(order.created_at)}</td>
                     <td className="py-4 px-4 text-gray-700">{getItemCount(order)}</td>
-                    <td className="py-4 px-4 font-semibold text-gray-900 whitespace-nowrap">GH₵ {order.total?.toFixed(2) || '0.00'}</td>
+                    <td className="py-4 px-4 font-semibold text-gray-900 whitespace-nowrap">GH₵ {money(order.total)}</td>
                     <td className="py-4 px-4 text-sm whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="text-gray-700">{order.payment_method || 'N/A'}</span>

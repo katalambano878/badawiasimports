@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 /**
@@ -16,10 +16,6 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
  *     key (since authenticated role no longer has EXECUTE).
  */
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function POST(request: NextRequest) {
   const response = NextResponse.next();
@@ -32,7 +28,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: profile } = await serviceClient
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -49,7 +45,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'order_ref is required' }, { status: 400 });
     }
 
-    const { data, error } = await serviceClient.rpc('mark_order_paid', {
+    const { data, error } = await supabaseAdmin.rpc('mark_order_paid', {
       order_ref,
       moolre_ref: moolre_ref || `ADMIN-${user.id.slice(0, 8)}-${Date.now()}`,
     });

@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
  * Initialize a Paystack transaction.
@@ -41,7 +38,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: 'Paystack is not configured. Please add PAYSTACK_SECRET_KEY in your environment or contact the store.' }, { status: 500 });
     }
 
-    const { data: existingOrder, error: orderFetchError } = await supabase
+    const { data: existingOrder, error: orderFetchError } = await supabaseAdmin
       .from('orders')
       .select('order_number, payment_status, total, metadata')
       .eq('order_number', orderId)

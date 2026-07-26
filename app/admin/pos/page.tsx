@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { money } from '@/lib/format-money';
 import { supabase } from '@/lib/supabase';
 
 interface ProductVariant {
@@ -592,7 +593,7 @@ export default function POSPage() {
                                     <div className="p-3 flex flex-col flex-1">
                                         <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-auto">{product.name}</h3>
                                         <div className="flex items-center justify-between mt-2 pt-2">
-                                            <span className="text-gray-900 font-bold">GH₵{product.price.toFixed(2)}</span>
+                                            <span className="text-gray-900 font-bold">GH₵{money(product.price)}</span>
                                             <button className="w-8 h-8 rounded-full bg-gray-50 text-gray-900 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
                                                 <i className={product.variants.length > 0 ? 'ri-arrow-right-line' : 'ri-add-line'}></i>
                                             </button>
@@ -616,7 +617,7 @@ export default function POSPage() {
                                 Items
                             </span>
                             <span>View Cart</span>
-                            <span>GH₵{grandTotal.toFixed(2)}</span>
+                            <span>GH₵{money(grandTotal)}</span>
                         </button>
                     </div>
                 )}
@@ -677,7 +678,7 @@ export default function POSPage() {
                                                 <i className="ri-add-line text-xs"></i>
                                             </button>
                                         </div>
-                                        <p className="text-sm font-bold text-gray-900">GH₵{(item.price * item.cartQuantity).toFixed(2)}</p>
+                                        <p className="text-sm font-bold text-gray-900">GH₵{money((item.price * item.cartQuantity))}</p>
                                     </div>
                                 </div>
                             </div>
@@ -690,7 +691,7 @@ export default function POSPage() {
                     <div className="space-y-1 text-sm">
                         <div className="flex justify-between text-gray-600">
                             <span>Subtotal</span>
-                            <span>GH₵{cartTotal.toFixed(2)}</span>
+                            <span>GH₵{money(cartTotal)}</span>
                         </div>
                         <div className="flex justify-between text-gray-600">
                             <span>Tax (0%)</span>
@@ -698,7 +699,7 @@ export default function POSPage() {
                         </div>
                         <div className="flex justify-between text-xl font-bold text-gray-900 pt-2 border-t border-gray-200 mt-2">
                             <span>Total</span>
-                            <span>GH₵{grandTotal.toFixed(2)}</span>
+                            <span>GH₵{money(grandTotal)}</span>
                         </div>
                     </div>
 
@@ -715,7 +716,7 @@ export default function POSPage() {
                             disabled={cart.length === 0}
                             className="px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-primary font-bold text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Charge GH₵{grandTotal.toFixed(2)}
+                            Charge GH₵{money(grandTotal)}
                         </button>
                     </div>
                 </div>
@@ -787,7 +788,7 @@ export default function POSPage() {
                                                 ) : null}
                                             </div>
                                             <div className="flex items-center justify-between text-sm">
-                                                <span className="font-bold text-gray-900">GH₵{variant.price.toFixed(2)}</span>
+                                                <span className="font-bold text-gray-900">GH₵{money(variant.price)}</span>
                                                 <span className="text-gray-500">Stock: {variant.quantity}</span>
                                             </div>
                                             {variant.sku && (
@@ -821,7 +822,7 @@ export default function POSPage() {
                                     {!completedOrder.paymentPending && paymentMethod === 'cash' && changeDue > 0 && (
                                         <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
                                             <p className="text-sm text-gray-900">Change Due</p>
-                                            <p className="text-2xl font-bold text-gray-800">GH₵{changeDue.toFixed(2)}</p>
+                                            <p className="text-2xl font-bold text-gray-800">GH₵{money(changeDue)}</p>
                                         </div>
                                     )}
 
@@ -887,7 +888,7 @@ export default function POSPage() {
                                     {/* Total Display */}
                                     <div className="text-center py-4 bg-gray-50 rounded-xl border border-gray-100">
                                         <p className="text-sm text-gray-800 uppercase tracking-wide font-semibold">Amount to Pay</p>
-                                        <p className="text-4xl font-extrabold text-gray-900 mt-1">GH₵{grandTotal.toFixed(2)}</p>
+                                        <p className="text-4xl font-extrabold text-gray-900 mt-1">GH₵{money(grandTotal)}</p>
                                     </div>
 
                                     {/* Customer Select */}
@@ -1088,7 +1089,7 @@ export default function POSPage() {
                                                 />
                                             </div>
                                             {changeDue > 0 && (
-                                                <p className="text-right text-gray-700 font-bold mt-2">Change: GH₵{changeDue.toFixed(2)}</p>
+                                                <p className="text-right text-gray-700 font-bold mt-2">Change: GH₵{money(changeDue)}</p>
                                             )}
                                             {changeDue < 0 && amountTendered && (
                                                 <p className="text-right text-red-500 font-medium mt-2">Insufficient amount</p>
@@ -1101,7 +1102,7 @@ export default function POSPage() {
                                                         onClick={() => setAmountTendered(amount.toString())}
                                                         className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors"
                                                     >
-                                                        GH₵{amount.toFixed(2)}
+                                                        GH₵{money(amount)}
                                                     </button>
                                                 ))}
                                             </div>

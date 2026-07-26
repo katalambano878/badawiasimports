@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { money } from '@/lib/format-money';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
  * Create a PayPal order and return the approval URL for redirect.
@@ -51,7 +49,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: 'Missing orderId' }, { status: 400 });
     }
 
-    const { data: existingOrder, error: orderFetchError } = await supabase
+    const { data: existingOrder, error: orderFetchError } = await supabaseAdmin
       .from('orders')
       .select('order_number, payment_status, total, metadata')
       .eq('order_number', orderId)
@@ -72,7 +70,7 @@ export async function POST(req: Request) {
     const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || requestUrl.origin).replace(/\/+$/, '');
 
     const currency = (process.env.PAYPAL_CURRENCY || 'USD').toUpperCase();
-    const value = amount.toFixed(2);
+    const value = money(amount);
 
     const token = await getPayPalAccessToken();
     const base = process.env.PAYPAL_API_BASE_URL || 'https://api-m.sandbox.paypal.com';

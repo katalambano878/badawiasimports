@@ -2,25 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    minimumCacheTTL: 2592000, // Cache optimized images for 30 days
-    // Serve next-gen formats first; falls back to original if browser doesn't support.
-    formats: ['image/avif', 'image/webp'],
-    // Responsive breakpoints — request smaller images on smaller viewports.
-    deviceSizes: [360, 640, 750, 828, 1080, 1200, 1440, 1920, 2048],
-    imageSizes: [16, 32, 48, 64, 96, 128, 200, 256, 384],
+    unoptimized: true, // sharp/cache often broken on Coolify non-root runners
+    minimumCacheTTL: 2592000,
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '*.supabase.co',
-        pathname: '/storage/v1/object/public/**',
-      },
-      {
-        protocol: 'https',
         hostname: 'images.unsplash.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'via.placeholder.com',
       },
       {
         protocol: 'https',
@@ -49,6 +36,14 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' }
+        ]
+      },
+      // Service worker - no cache, always fresh
+      {
+        source: '/service-worker.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' }
         ]
       },
       // Cache storefront API routes aggressively (5 min CDN, revalidate in background)

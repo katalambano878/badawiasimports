@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { money } from '@/lib/format-money';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -453,16 +454,16 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                   <div className="flex items-baseline space-x-3">
                     {hasVariants && !selectedVariant && !showSalePrice ? (
                       <span className="text-2xl font-bold text-gray-900">
-                        From GH₵{minVariantPrice.toFixed(2)}
+                        From GH₵{money(minVariantPrice)}
                       </span>
                     ) : (
-                      <span className={`text-2xl font-bold ${showSalePrice ? 'text-red-600' : 'text-gray-900'}`}>GH₵{activePrice.toFixed(2)}</span>
+                      <span className={`text-2xl font-bold ${showSalePrice ? 'text-red-600' : 'text-gray-900'}`}>GH₵{money(activePrice)}</span>
                     )}
                     {showSalePrice && (
-                      <span className="text-lg text-gray-400 line-through">GH₵{product.price.toFixed(2)}</span>
+                      <span className="text-lg text-gray-400 line-through">GH₵{money(product.price)}</span>
                     )}
                     {!showSalePrice && product.compare_at_price && product.compare_at_price > activePrice && (
-                      <span className="text-lg text-gray-400 line-through">GH₵{product.compare_at_price.toFixed(2)}</span>
+                      <span className="text-lg text-gray-400 line-through">GH₵{money(product.compare_at_price)}</span>
                     )}
                     {discount > 0 && (
                       <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">{discount}% OFF</span>

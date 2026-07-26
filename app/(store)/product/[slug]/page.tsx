@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import ProductDetailClient from './ProductDetailClient';
 
 const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.badawiasimports.com').replace(/\/+$/, '');
@@ -7,11 +7,7 @@ const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || "BADAWIA'S IMPORTS";
 
 async function getProduct(slug: string) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    const { data } = await supabase
+    const { data } = await supabaseAdmin
       .from('products')
       .select('name, description, images, price, category_id, metadata')
       .eq('slug', slug)

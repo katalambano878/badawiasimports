@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
@@ -19,14 +19,7 @@ import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-lim
  *   - Origin + rate-limit gating to discourage abuse.
  */
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-if (!supabaseServiceKey) {
-  console.error('[orders/create] SUPABASE_SERVICE_ROLE_KEY missing');
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const allowedOriginPattern = /^https?:\/\/(?:www\.)?(badawiasimports\.com|localhost(?::\d+)?|127\.0\.0\.1(?::\d+)?|.*\.vercel\.app)/i;
 
@@ -109,7 +102,7 @@ export async function POST(request: Request) {
     const productMap = new Map<string, { id: string; name: string; price: number; sale_price: number | null; metadata: Record<string, unknown> | null; slug: string | null }>();
 
     if (ids.length > 0) {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('products')
         .select('id, name, price, sale_price, metadata, slug')
         .in('id', ids);
@@ -120,7 +113,7 @@ export async function POST(request: Request) {
       for (const p of data || []) productMap.set(p.id, p);
     }
     if (slugs.length > 0) {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('products')
         .select('id, name, price, sale_price, metadata, slug')
         .in('slug', slugs);
@@ -214,18 +207,18 @@ export async function POST(request: Request) {
       },
     };
 
-    const { error: orderError } = await supabase.from('orders').insert([orderRow]);
+    const { error: orderError } = await supabaseAdmin.from('orders').insert([orderRow]);
     if (orderError) {
       console.error('[orders/create] insert order failed:', orderError.message);
       return NextResponse.json({ error: 'Could not create order' }, { status: 500 });
     }
 
     const itemsRows = orderItems.map((it) => ({ ...it, order_id: orderId }));
-    const { error: itemsError } = await supabase.from('order_items').insert(itemsRows);
+    const { error: itemsError } = await supabaseAdmin.from('order_items').insert(itemsRows);
     if (itemsError) {
       console.error('[orders/create] insert order_items failed:', itemsError.message);
       // Roll back the parent order so we don't leave orphans.
-      await supabase.from('orders').delete().eq('id', orderId);
+      await supabaseAdmin.from('orders').delete().eq('id', orderId);
       return NextResponse.json({ error: 'Could not save order items' }, { status: 500 });
     }
 

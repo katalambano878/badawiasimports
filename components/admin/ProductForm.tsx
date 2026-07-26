@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { money } from '@/lib/format-money';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -682,7 +683,7 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                                                     {(((parseFloat(price) - parseFloat(salePrice)) / parseFloat(price)) * 100).toFixed(0)}% OFF
                                                 </p>
                                                 <p className="text-sm text-gray-500">
-                                                    Save GH₵ {(parseFloat(price) - parseFloat(salePrice)).toFixed(2)}
+                                                    Save GH₵ {money((parseFloat(price) - parseFloat(salePrice)))}
                                                 </p>
                                             </div>
                                         ) : (
@@ -698,7 +699,7 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                                 <p className="text-blue-900 font-semibold mb-1">Compare-At Discount</p>
                                 {price && comparePrice && parseFloat(comparePrice) > parseFloat(price) ? (
                                     <p className="text-blue-800">
-                                        Savings: GH₵ {(parseFloat(comparePrice) - parseFloat(price)).toFixed(2)}
+                                        Savings: GH₵ {money((parseFloat(comparePrice) - parseFloat(price)))}
                                         <span className="ml-2">
                                             ({(((parseFloat(comparePrice) - parseFloat(price)) / parseFloat(comparePrice)) * 100).toFixed(0)}% off)
                                         </span>

@@ -1,13 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendOrderConfirmation } from '@/lib/notifications';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 import { checkMoolreTransaction } from '@/lib/moolre';
-
-// Use Service Role Key for admin-level updates (marking paid)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
  * Moolre Callback Payload Structure (from their actual API):
@@ -163,7 +158,7 @@ export async function POST(req: Request) {
             console.log(`[Callback] Payment SUCCESS for Order ${merchantOrderRef}`);
 
             // Check if order exists
-            const { data: existingOrder, error: fetchError } = await supabase
+            const { data: existingOrder, error: fetchError } = await supabaseAdmin
                 .from('orders')
                 .select('id, order_number, payment_status, total')
                 .eq('order_number', merchantOrderRef)
@@ -206,7 +201,7 @@ export async function POST(req: Request) {
             }
 
             // Mark order as paid via RPC
-            const { data: orderJson, error: updateError } = await supabase
+            const { data: orderJson, error: updateError } = await supabaseAdmin
                 .rpc('mark_order_paid', {
                     order_ref: merchantOrderRef,
                     moolre_ref: String(moolreReference)
@@ -227,7 +222,7 @@ export async function POST(req: Request) {
             // Update customer stats
             try {
                 if (orderJson.email) {
-                    await supabase.rpc('update_customer_stats', {
+                    await supabaseAdmin.rpc('update_customer_stats', {
                         p_customer_email: orderJson.email,
                         p_order_total: orderJson.total
                     });
@@ -251,7 +246,7 @@ export async function POST(req: Request) {
             // Payment failed
             console.log(`[Callback] Payment FAILED for ${merchantOrderRef} | Status: ${apiStatus} | TX: ${txStatus}`);
 
-            const { data: failedOrderMeta } = await supabase
+            const { data: failedOrderMeta } = await supabaseAdmin
                 .from('orders')
                 .select('metadata')
                 .eq('order_number', merchantOrderRef)
@@ -263,7 +258,7 @@ export async function POST(req: Request) {
                 failure_reason: body.message || 'Payment failed'
             };
 
-            await supabase
+            await supabaseAdmin
                 .from('orders')
                 .update({
                     payment_status: 'failed',

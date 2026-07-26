@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { money } from '@/lib/format-money';
 import { useEffect } from 'react';
 import { useCart } from '@/context/CartContext';
 
@@ -85,7 +86,7 @@ export default function MiniCart({ isOpen, onClose }: MiniCartProps) {
 
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-lg font-bold text-gray-900">
-                          GH₵{item.price.toFixed(2)}
+                          GH₵{money(item.price)}
                         </span>
 
                         <div className="flex items-center border border-gray-300 rounded bg-white">
@@ -128,7 +129,7 @@ export default function MiniCart({ isOpen, onClose }: MiniCartProps) {
             <div className="border-t border-gray-200 p-5 sm:p-6 pb-[calc(env(safe-area-inset-bottom)+5rem)] lg:pb-6 bg-gray-50 shrink-0">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-gray-700 font-medium">Subtotal</span>
-                <span className="text-2xl font-bold text-gray-900">GH₵{subtotal.toFixed(2)}</span>
+                <span className="text-2xl font-bold text-gray-900">GH₵{money(subtotal)}</span>
               </div>
 
               <p className="text-sm text-gray-600 mb-3 text-center">
