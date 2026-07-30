@@ -46,10 +46,21 @@ export async function POST(req: Request) {
       });
     }
 
-    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(refToVerify)}`, {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${secretKey}` },
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15_000);
+    let verifyRes: Response;
+    try {
+      verifyRes = await fetch(
+        `https://api.paystack.co/transaction/verify/${encodeURIComponent(refToVerify)}`,
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${secretKey}` },
+          signal: controller.signal,
+        }
+      );
+    } finally {
+      clearTimeout(timer);
+    }
 
     const verifyResult = await verifyRes.json();
 
@@ -61,6 +72,27 @@ export async function POST(req: Request) {
         payment_status: order.payment_status,
         message: verifyResult.message || 'Payment not confirmed',
       });
+    }
+
+    // Amount is in pesewas — compare against server-side order total
+    const paidPesewas = Number(verifyResult.data?.amount);
+    const expectedPesewas = Math.round(Number(order.total) * 100);
+    if (
+      !Number.isFinite(paidPesewas) ||
+      !Number.isFinite(expectedPesewas) ||
+      Math.abs(paidPesewas - expectedPesewas) > 1
+    ) {
+      console.error('[Paystack Verify] Amount mismatch', {
+        orderNumber,
+        paidPesewas,
+        expectedPesewas,
+      });
+      return NextResponse.json({ success: false, message: 'Amount mismatch' }, { status: 400 });
+    }
+
+    const currency = String(verifyResult.data?.currency || 'GHS').toUpperCase();
+    if (currency !== 'GHS') {
+      return NextResponse.json({ success: false, message: 'Currency mismatch' }, { status: 400 });
     }
 
     const paystackRef = verifyResult.data?.reference || refToVerify;

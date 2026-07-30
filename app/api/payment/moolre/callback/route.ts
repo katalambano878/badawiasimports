@@ -1,8 +1,52 @@
+import { createHash } from 'crypto';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendOrderConfirmation } from '@/lib/notifications';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 import { checkMoolreTransaction } from '@/lib/moolre';
+import { isPlainPostgres } from '@/lib/db/mode';
+
+async function recordCallbackEvent(opts: {
+  reference: string | null;
+  externalEventId: string | null;
+  payload: unknown;
+  signatureStatus: string;
+  processingStatus: string;
+  errorMessage?: string;
+}) {
+  if (!isPlainPostgres()) return;
+  try {
+    const { query } = await import('@/lib/db/pool');
+    const payloadHash = createHash('sha256')
+      .update(JSON.stringify(opts.payload ?? {}))
+      .digest('hex');
+    await query(
+      `INSERT INTO payment_callback_events
+         (gateway, event_type, external_event_id, reference, payload_hash,
+          signature_status, processing_status, error_message, processed_at)
+       VALUES ('moolre', 'payment_callback', $1, $2, $3, $4, $5, $6,
+               CASE WHEN $5 IN ('processed','duplicate','rejected') THEN now() ELSE NULL END)
+       ON CONFLICT (gateway, payload_hash) DO UPDATE
+         SET attempts = payment_callback_events.attempts + 1,
+             processing_status = EXCLUDED.processing_status,
+             error_message = COALESCE(EXCLUDED.error_message, payment_callback_events.error_message)`,
+      [
+        opts.externalEventId,
+        opts.reference,
+        payloadHash,
+        opts.signatureStatus,
+        opts.processingStatus,
+        opts.errorMessage || null,
+      ]
+    );
+  } catch (e) {
+    // Table may not exist until migration is applied — never fail the callback on ledger write.
+    console.warn(
+      '[Callback] payment_callback_events write skipped:',
+      e instanceof Error ? e.message : e
+    );
+  }
+}
 
 /**
  * Moolre Callback Payload Structure (from their actual API):
@@ -112,6 +156,14 @@ export async function POST(req: Request) {
 
         if (!merchantOrderRef) {
             console.error('[Callback] Missing order reference. Body:', JSON.stringify(body).substring(0, 500));
+            await recordCallbackEvent({
+                reference: null,
+                externalEventId: String(moolreReference || ''),
+                payload: body,
+                signatureStatus: 'absent',
+                processingStatus: 'rejected',
+                errorMessage: 'Missing order reference',
+            });
             return NextResponse.json({ success: false, message: 'Missing order reference' }, { status: 400 });
         }
 
@@ -151,6 +203,14 @@ export async function POST(req: Request) {
         const secretMatches = expectedSecret && body.secret === expectedSecret;
         if (callbackHasSecret && expectedSecret && !secretMatches) {
             console.error('[Callback] secret field present but mismatched — rejecting as likely spoof.');
+            await recordCallbackEvent({
+                reference: merchantOrderRef || null,
+                externalEventId: String(moolreReference || ''),
+                payload: body,
+                signatureStatus: 'mismatch',
+                processingStatus: 'rejected',
+                errorMessage: 'Invalid secret',
+            });
             return NextResponse.json({ success: false, message: 'Invalid secret' }, { status: 403 });
         }
 
@@ -172,6 +232,13 @@ export async function POST(req: Request) {
             // Already paid - idempotent
             if (existingOrder.payment_status === 'paid') {
                 console.log('[Callback] Order already paid, skipping:', merchantOrderRef);
+                await recordCallbackEvent({
+                    reference: merchantOrderRef,
+                    externalEventId: String(moolreReference || ''),
+                    payload: body,
+                    signatureStatus: secretMatches ? 'matched' : 'absent',
+                    processingStatus: 'duplicate',
+                });
                 return NextResponse.json({ success: true, message: 'Order already processed' });
             }
 
@@ -240,20 +307,32 @@ export async function POST(req: Request) {
                 console.error('[Callback] Notification failed:', notifyError.message);
             }
 
+            await recordCallbackEvent({
+                reference: merchantOrderRef,
+                externalEventId: String(moolreReference || ''),
+                payload: body,
+                signatureStatus: secretMatches ? 'matched' : 'absent',
+                processingStatus: 'processed',
+            });
             return NextResponse.json({ success: true, message: 'Payment verified and Order Updated' });
 
         } else {
-            // Payment failed
+            // Payment failed — never overwrite a previously successful payment
             console.log(`[Callback] Payment FAILED for ${merchantOrderRef} | Status: ${apiStatus} | TX: ${txStatus}`);
 
-            const { data: failedOrderMeta } = await supabaseAdmin
+            const { data: failedOrder } = await supabaseAdmin
                 .from('orders')
-                .select('metadata')
+                .select('metadata, payment_status')
                 .eq('order_number', merchantOrderRef)
                 .single();
 
+            if (failedOrder?.payment_status === 'paid') {
+                console.warn('[Callback] Ignoring late failure for already-paid order:', merchantOrderRef);
+                return NextResponse.json({ success: true, message: 'Order already paid' });
+            }
+
             const mergedFailureMetadata = {
-                ...(failedOrderMeta?.metadata || {}),
+                ...(failedOrder?.metadata || {}),
                 moolre_reference: moolreReference,
                 failure_reason: body.message || 'Payment failed'
             };

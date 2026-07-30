@@ -23,6 +23,9 @@
 - [x] `lib/format-money.ts` + error boundaries
 - [x] Payment/orders/cron/admin mark-paid → `supabaseAdmin`
 - [x] Order history Track / Reorder / Invoice / Help; hide Bulk Restock stub
+- [x] `/rest/v1` + `/rest/v1/rpc` + storage writes ACL (`lib/db/rest-acl.ts`)
+- [x] `payment_callback_events` ledger + Paystack amount verify + fetch timeouts
+- [x] See root `FULL_SYSTEM_AUDIT.md` / `PAYMENT_AND_CALLBACK_AUDIT.md`
 
 ## Verify
 

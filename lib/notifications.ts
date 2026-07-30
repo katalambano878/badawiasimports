@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { escapeHtml } from '@/lib/sanitize';
 
 const esc = (v: unknown): string => escapeHtml(v == null ? '' : String(v));
@@ -175,23 +175,31 @@ export async function sendSMS({ to, message }: { to: string; message: string }) 
 
     try {
         console.log(`[SMS] Sending to ${maskPhone(recipient)}`);
-        const response = await fetch('https://api.moolre.com/open/sms/send', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-API-VASKEY': smsVasKey
-            },
-            body: JSON.stringify({
-                type: 1,
-                senderid: SMS_SENDER_ID,
-                messages: [
-                    {
-                        recipient: recipient,
-                        message: message
-                    }
-                ]
-            })
-        });
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 12_000);
+        let response: Response;
+        try {
+            response = await fetch('https://api.moolre.com/open/sms/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-VASKEY': smsVasKey
+                },
+                body: JSON.stringify({
+                    type: 1,
+                    senderid: SMS_SENDER_ID,
+                    messages: [
+                        {
+                            recipient: recipient,
+                            message: message
+                        }
+                    ]
+                }),
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timer);
+        }
 
         const contentType = response.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
@@ -248,7 +256,7 @@ export async function sendOrderConfirmation(order: any) {
     // Fetch order items to get preorder_shipping info
     let shippingNotes: string[] = [];
     try {
-        const { data: items } = await supabase
+        const { data: items } = await supabaseAdmin
             .from('order_items')
             .select('product_name, metadata')
             .eq('order_id', id);

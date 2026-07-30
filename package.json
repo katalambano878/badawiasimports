@@ -43,6 +43,7 @@
     "compress:images": "node scripts/compress-media.mjs",
     "optimize:images": "node scripts/optimize-images.mjs",
     "compress:video": "sh scripts/compress-video.sh",
-    "set-admin": "node --env-file=.env.local scripts/set-admin-role.mjs"
+    "set-admin": "node --env-file=.env.local scripts/set-admin-role.mjs",
+    "create-admin:pg": "node --env-file=.env.local scripts/create-admin-pg.mjs"
   }
 }

@@ -15,7 +15,10 @@
  * Success body: { status: 1, code: 'SS01', data: { txstatus: 1, ... } }
  */
 
+import { fetchWithTimeout } from '@/lib/fetch-timeout';
+
 const STATUS_URL = 'https://api.moolre.com/open/transact/status';
+const STATUS_TIMEOUT_MS = 12_000;
 
 export interface MoolreStatusResult {
   ok: boolean; // true = Moolre says this txn succeeded
@@ -52,15 +55,19 @@ export async function checkMoolreTransaction(args: {
   }
 
   try {
-    const res = await fetch(STATUS_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-USER': apiUser,
-        'X-API-PUBKEY': apiKey,
+    const res = await fetchWithTimeout(
+      STATUS_URL,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-USER': apiUser,
+          'X-API-PUBKEY': apiKey,
+        },
+        body: JSON.stringify({ type: 1, idtype, id }),
       },
-      body: JSON.stringify({ type: 1, idtype, id }),
-    });
+      STATUS_TIMEOUT_MS
+    );
 
     let body: MoolreStatusBody | null = null;
     try {
