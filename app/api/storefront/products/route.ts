@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 
 // Simple in-memory cache keyed by query string
 const cache = new Map<string, { data: unknown; timestamp: number }>();
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
         product_variants(id, name, price, quantity, option1, option2, image_url)
       `;
 
-    let query = supabaseAdmin
+    let query = dbAdmin
       .from('products')
       .select(select, { count: 'exact' })
       .eq('status', 'active');
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     }
 
     if (category && category !== 'all') {
-      const { data: cat } = await supabaseAdmin
+      const { data: cat } = await dbAdmin
         .from('categories')
         .select('id')
         .eq('slug', category)

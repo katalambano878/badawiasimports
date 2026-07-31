@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 export default function AdminReviewsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
@@ -17,7 +17,7 @@ export default function AdminReviewsPage() {
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('reviews')
         .select(`
           *,
@@ -110,7 +110,7 @@ export default function AdminReviewsPage() {
       if (action === 'Reject') newStatus = 'Rejected';
 
       if (newStatus) {
-        const { error } = await supabase
+        const { error } = await db
           .from('reviews')
           .update({ status: newStatus })
           .in('id', selectedReviews);

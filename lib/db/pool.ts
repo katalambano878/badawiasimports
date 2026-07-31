@@ -1,7 +1,5 @@
 // Shared Postgres connection pool for the app's in-process backend.
-//
-// Replaces the Supabase/PostgREST data plane. Every ported edge function talks
-// to Postgres through the supabase-compat client, which uses this pool.
+// API routes and the query builder talk to Postgres through this pool.
 
 import { Pool, types } from "pg";
 

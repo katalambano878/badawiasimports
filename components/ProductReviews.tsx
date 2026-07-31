@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { cachedQuery, invalidateCache } from '@/lib/query-cache';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
 
@@ -41,7 +41,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
       // Fetch approved reviews (cached for 5 minutes)
       const { data, error } = await cachedQuery<{ data: any; error: any }>(
         `reviews:${productId}`,
-        (() => supabase
+        (() => db
           .from('reviews')
           .select('*')
           .eq('product_id', productId)
@@ -79,7 +79,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
 
   useEffect(() => {
     // Check auth
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    db.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
     });
 
@@ -120,7 +120,7 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.from('reviews').insert([{
+      const { error } = await db.from('reviews').insert([{
         product_id: productId,
         user_id: user.id,
         rating: reviewForm.rating,

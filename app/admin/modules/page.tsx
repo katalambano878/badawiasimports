@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 interface Module {
   id: string;
@@ -112,7 +112,7 @@ export default function ModulesPage() {
 
   const fetchModuleStates = async () => {
     try {
-      const { data, error } = await supabase.from('store_modules').select('*');
+      const { data, error } = await db.from('store_modules').select('*');
       if (error) throw error;
 
       if (data) {
@@ -137,7 +137,7 @@ export default function ModulesPage() {
     ));
 
     try {
-      const { error } = await supabase
+      const { error } = await db
         .from('store_modules')
         .upsert({ id, enabled: newState, updated_at: new Date().toISOString() });
 

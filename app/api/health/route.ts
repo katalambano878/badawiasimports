@@ -11,8 +11,16 @@ export async function GET() {
   const checks: Record<string, string | boolean> = {
     ok: true,
     plainPostgres: isPlainPostgres(),
-    appUrlConfigured: !!process.env.NEXT_PUBLIC_APP_URL,
-    supabaseUrlConfigured: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    appUrlConfigured: !!(
+      process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+    ),
+    anonKeyConfigured: !!(
+      process.env.NEXT_PUBLIC_APP_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ),
+    serviceKeyConfigured: !!(
+      process.env.APP_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+    ),
     moolrePaymentConfigured: !!(
       process.env.MOOLRE_API_USER && process.env.MOOLRE_API_PUBKEY
     ),
@@ -25,6 +33,7 @@ export async function GET() {
       process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET
     ),
     emailConfigured: !!process.env.RESEND_API_KEY,
+    supabasePackagesRemoved: true,
   };
 
   if (isPlainPostgres()) {

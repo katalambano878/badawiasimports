@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 
 
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: 'Paystack is not configured. Please add PAYSTACK_SECRET_KEY in your environment or contact the store.' }, { status: 500 });
     }
 
-    const { data: existingOrder, error: orderFetchError } = await supabaseAdmin
+    const { data: existingOrder, error: orderFetchError } = await dbAdmin
       .from('orders')
       .select('order_number, payment_status, total, metadata')
       .eq('order_number', orderId)

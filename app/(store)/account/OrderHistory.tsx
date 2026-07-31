@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { money, asNumber } from '@/lib/format-money';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { useCart } from '@/context/CartContext';
 
 interface OrderItem {
@@ -40,11 +40,11 @@ export default function OrderHistory() {
   useEffect(() => {
     async function fetchOrders() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await db.auth.getSession();
         if (!session) return;
         if (session.user.email) setUserEmail(session.user.email);
 
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from('orders')
           .select(`
                     *,
@@ -114,7 +114,7 @@ export default function OrderHistory() {
       let added = 0;
       for (const item of order.items) {
         if (!item.productId) continue;
-        const { data: product, error } = await supabase
+        const { data: product, error } = await db
           .from('products')
           .select('id, slug, name, price, quantity, moq, status, product_images(url)')
           .eq('id', item.productId)

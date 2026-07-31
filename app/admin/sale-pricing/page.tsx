@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { money } from '@/lib/format-money';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import Link from 'next/link';
 
 interface ProductSale {
@@ -30,7 +30,7 @@ export default function SalePricingPage() {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const { data } = await supabase
+      const { data } = await db
         .from('store_settings')
         .select('key, value')
         .in('key', ['store_wide_sale_enabled', 'sale_banner_text', 'sale_end_date']);
@@ -50,7 +50,7 @@ export default function SalePricingPage() {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const { data } = await supabase
+      const { data } = await db
         .from('products')
         .select('id, name, price, sale_price, status, product_images(url, position)')
         .eq('status', 'active')
@@ -76,7 +76,7 @@ export default function SalePricingPage() {
       ];
 
       for (const s of settings) {
-        const { error } = await supabase.from('store_settings').upsert(
+        const { error } = await db.from('store_settings').upsert(
           { key: s.key, value: s.value, updated_at: new Date().toISOString() },
           { onConflict: 'key' }
         );
@@ -97,7 +97,7 @@ export default function SalePricingPage() {
 
   const updateProductSalePrice = async (productId: string, newSalePrice: string) => {
     const value = newSalePrice ? parseFloat(newSalePrice) : null;
-    const { error } = await supabase
+    const { error } = await db
       .from('products')
       .update({ sale_price: value })
       .eq('id', productId);

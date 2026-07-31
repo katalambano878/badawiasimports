@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { money } from '@/lib/format-money';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -25,7 +25,7 @@ export default function CustomerDetailsPage() {
     const fetchCustomerData = async () => {
         try {
             // 1. Fetch Profile
-            const { data: profile, error: profileError } = await supabase
+            const { data: profile, error: profileError } = await db
                 .from('profiles')
                 .select('*')
                 .eq('id', customerId)
@@ -34,7 +34,7 @@ export default function CustomerDetailsPage() {
             if (profileError) throw profileError;
 
             // 2. Fetch Orders
-            const { data: ordersData, error: ordersError } = await supabase
+            const { data: ordersData, error: ordersError } = await db
                 .from('orders')
                 .select('*')
                 .eq('user_id', customerId)

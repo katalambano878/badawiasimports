@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   createClient,
   applyPostgrestParams,
-} from "@/lib/db/supabase-compat";
+} from "@/lib/db/query-builder";
 import { isPlainPostgres } from "@/lib/db/mode";
 import { resolveRestActor } from "@/lib/db/rest-auth";
 import { authorizeRestTable, type RestMethod } from "@/lib/db/rest-acl";

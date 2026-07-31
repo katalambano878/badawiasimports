@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import OrderHistory from './OrderHistory';
 import AddressBook from './AddressBook';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 function AccountContent() {
   const router = useRouter();
@@ -44,7 +44,7 @@ function AccountContent() {
 
   useEffect(() => {
     async function checkUser() {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await db.auth.getSession();
       if (!session) {
         router.push('/auth/login');
         return;
@@ -68,7 +68,7 @@ function AccountContent() {
     setProfileMessage({ type: '', text: '' });
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      const { error } = await db.auth.updateUser({
         data: {
           first_name: profileData.firstName,
           last_name: profileData.lastName,
@@ -100,7 +100,7 @@ function AccountContent() {
     setPasswordMessage({ type: '', text: '' });
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      const { error } = await db.auth.updateUser({
         password: passwordData.password
       });
       if (error) throw error;
@@ -114,7 +114,7 @@ function AccountContent() {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await db.auth.signOut();
     router.push('/auth/login');
     router.refresh();
   };

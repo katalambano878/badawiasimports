@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 
 export async function POST(req: Request) {
     try {
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
         // Always source the amount from the database — never trust client-supplied amount.
         // Also pull the lookup_token so we can append it to the redirect URL (the storefront
         // pages need it to read the order back without an open RLS policy).
-        const { data: existingOrder, error: orderFetchError } = await supabaseAdmin
+        const { data: existingOrder, error: orderFetchError } = await dbAdmin
             .from('orders')
             .select('order_number, payment_status, metadata, total')
             .eq('order_number', orderId)
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
             payment_attempted_at: new Date().toISOString()
         };
 
-        const { error: orderUpdateError } = await supabaseAdmin
+        const { error: orderUpdateError } = await dbAdmin
             .from('orders')
             .update({
                 payment_status: 'pending',

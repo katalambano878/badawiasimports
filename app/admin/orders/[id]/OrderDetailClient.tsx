@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { money } from '@/lib/format-money';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import FraudDetectionAlert from '@/components/FraudDetectionAlert';
 
 interface OrderDetailClientProps {
@@ -50,9 +50,9 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   useEffect(() => {
     fetchOrderDetails();
     // Fetch store name from settings
-    supabase.from('store_settings').select('value').eq('key', 'site_name').single()
+    db.from('store_settings').select('value').eq('key', 'site_name').single()
       .then(({ data }) => { if (data?.value) setStoreName(typeof data.value === 'string' ? data.value : String(data.value)); });
-    supabase.from('store_settings').select('value').eq('key', 'contact_email').single()
+    db.from('store_settings').select('value').eq('key', 'contact_email').single()
       .then(({ data }) => { if (data?.value) setStoreEmail(typeof data.value === 'string' ? data.value : String(data.value)); });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch when orderId changes
   }, [orderId]);
@@ -61,7 +61,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
     try {
       setLoading(true);
       // Try to fetch by ID or order_number
-      let query = supabase
+      let query = db
         .from('orders')
         .select(`
           *,
@@ -86,7 +86,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
 
       if (error && error.code === 'PGRST116') {
         // Not found by ID, try order_number
-        const { data: dataByNum, error: errorByNum } = await supabase
+        const { data: dataByNum, error: errorByNum } = await db
           .from('orders')
           .select(`
             *,
@@ -135,7 +135,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
       setStatusUpdating(true);
       const statusToUpdate = newStatus || order.status;
 
-      const { error } = await supabase
+      const { error } = await db
         .from('orders')
         .update({
           status: statusToUpdate,
@@ -164,7 +164,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
 
       if (statusChanged || (trackingChanged && trackingNumber)) {
         // Get auth token for notification API
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await db.auth.getSession();
         const authToken = session?.access_token;
 
         fetch('/api/notifications', {
@@ -207,7 +207,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
       setResendingNotification(true);
 
       // Get auth token
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await db.auth.getSession();
       const authToken = session?.access_token;
 
       const shippingAddress = order.shipping_address || {};

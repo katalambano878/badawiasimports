@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
     const productMap = new Map<string, ProductRow>();
 
     if (ids.length > 0) {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await dbAdmin
         .from('products')
         .select('id, name, price, sale_price, compare_at_price, metadata, slug')
         .in('id', ids);
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
       for (const p of data || []) productMap.set(p.id, p as ProductRow);
     }
     if (slugs.length > 0) {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await dbAdmin
         .from('products')
         .select('id, name, price, sale_price, compare_at_price, metadata, slug')
         .in('slug', slugs);
@@ -223,18 +223,18 @@ export async function POST(request: Request) {
       },
     };
 
-    const { error: orderError } = await supabaseAdmin.from('orders').insert([orderRow]);
+    const { error: orderError } = await dbAdmin.from('orders').insert([orderRow]);
     if (orderError) {
       console.error('[orders/create] insert order failed:', orderError.message);
       return NextResponse.json({ error: 'Could not create order' }, { status: 500 });
     }
 
     const itemsRows = orderItems.map((it) => ({ ...it, order_id: orderId }));
-    const { error: itemsError } = await supabaseAdmin.from('order_items').insert(itemsRows);
+    const { error: itemsError } = await dbAdmin.from('order_items').insert(itemsRows);
     if (itemsError) {
       console.error('[orders/create] insert order_items failed:', itemsError.message);
       // Roll back the parent order so we don't leave orphans.
-      await supabaseAdmin.from('orders').delete().eq('id', orderId);
+      await dbAdmin.from('orders').delete().eq('id', orderId);
       return NextResponse.json({ error: 'Could not save order items' }, { status: 500 });
     }
 

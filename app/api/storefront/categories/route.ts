@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 
 // Simple in-memory cache
 let cache: { data: any; timestamp: number } | null = null;
@@ -17,7 +17,7 @@ export async function GET() {
     }
 
     try {
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await dbAdmin
             .from('categories')
             .select('id, name, slug, image_url, parent_id, metadata')
             .eq('status', 'active')

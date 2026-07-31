@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 import { escapeHtml } from '@/lib/sanitize';
 
 const esc = (v: unknown): string => escapeHtml(v == null ? '' : String(v));
@@ -256,7 +256,7 @@ export async function sendOrderConfirmation(order: any) {
     // Fetch order items to get preorder_shipping info
     let shippingNotes: string[] = [];
     try {
-        const { data: items } = await supabaseAdmin
+        const { data: items } = await dbAdmin
             .from('order_items')
             .select('product_name, metadata')
             .eq('order_id', id);

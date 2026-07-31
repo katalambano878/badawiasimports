@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 // Helper for currency formatting
 const formatCurrency = (amount: number) => {
@@ -36,14 +36,14 @@ export default function CustomerInsightsPage() {
       setLoading(true);
 
       // 1. Fetch Profiles
-      const { data: profiles, error: profileError } = await supabase
+      const { data: profiles, error: profileError } = await db
         .from('profiles')
         .select('*');
 
       if (profileError) throw profileError;
 
       // 2. Fetch Orders for calculations
-      const { data: orders, error: orderError } = await supabase
+      const { data: orders, error: orderError } = await db
         .from('orders')
         .select('user_id, total, created_at, status');
 

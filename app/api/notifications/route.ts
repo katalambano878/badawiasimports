@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 import { sendOrderConfirmation, sendOrderStatusUpdate, sendWelcomeMessage, sendContactMessage, sendPaymentLink, sendEmail, sendSMS, emailLayout } from '@/lib/notifications';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 
@@ -59,14 +59,14 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
 
-            const { data: { user }, error } = await supabaseAdmin.auth.getUser(authToken);
+            const { data: { user }, error } = await dbAdmin.auth.getUser(authToken);
             if (error || !user) {
                 console.error('[Notifications] Auth failed:', error?.message);
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
 
             // Verify admin/staff role (using service role key bypasses RLS)
-            const { data: profile, error: profileError } = await supabaseAdmin
+            const { data: profile, error: profileError } = await dbAdmin
                 .from('profiles')
                 .select('role')
                 .eq('id', user.id)
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
             const { email, name, orderNumber, status, trackingNumber, phone } = payload;
             
             // Fetch full order data to get metadata (tracking number etc.)
-            const { data: fullOrder } = await supabaseAdmin
+            const { data: fullOrder } = await dbAdmin
                 .from('orders')
                 .select('id, order_number, email, phone, shipping_address, metadata')
                 .eq('order_number', orderNumber)

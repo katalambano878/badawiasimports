@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import ScrollReveal from '@/components/ScrollReveal';
@@ -87,7 +87,7 @@ function LoginPageInner() {
     }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await db.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });

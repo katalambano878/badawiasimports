@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { money } from '@/lib/format-money';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { useRouter } from 'next/navigation';
 
 interface ProductFormProps {
@@ -109,11 +109,11 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
             const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
             const safe = colorName.replace(/[^a-z0-9-_]/gi, '-').toLowerCase();
             const path = `products/colors/${safe}-${Date.now()}.${ext}`;
-            const { error: uploadErr } = await supabase.storage
+            const { error: uploadErr } = await db.storage
                 .from('media')
                 .upload(path, file, { cacheControl: '3600', upsert: true });
             if (uploadErr) throw uploadErr;
-            const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path);
+            const { data: { publicUrl } } = db.storage.from('media').getPublicUrl(path);
             setSelectedColors(prev => prev.map(c => c.name === colorName ? { ...c, image: publicUrl } : c));
         } catch (err: any) {
             console.error('[ColorImage] upload failed', err);
@@ -237,7 +237,7 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
     // Fetch categories on mount
     useEffect(() => {
         async function fetchCategories() {
-            const { data } = await supabase.from('categories').select('id, name').eq('status', 'active');
+            const { data } = await db.from('categories').select('id, name').eq('status', 'active');
             if (data) {
                 setCategories(data);
                 if (data.length > 0 && !categoryId) {
@@ -275,13 +275,13 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
             const fileName = `${Math.random()}.${fileExt}`;
             const filePath = `${fileName}`;
 
-            const { error: uploadError } = await supabase.storage
+            const { error: uploadError } = await db.storage
                 .from('products')
                 .upload(filePath, file);
 
             if (uploadError) throw uploadError;
 
-            const { data: { publicUrl } } = supabase.storage
+            const { data: { publicUrl } } = db.storage
                 .from('products')
                 .getPublicUrl(filePath);
 
@@ -349,14 +349,14 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
 
             if (isEditMode && productId) {
                 // Update existing
-                const { error: updateError } = await supabase
+                const { error: updateError } = await db
                     .from('products')
                     .update(productData)
                     .eq('id', productId);
                 error = updateError;
             } else {
                 // Create new
-                const { data: newProduct, error: insertError } = await supabase
+                const { data: newProduct, error: insertError } = await db
                     .from('products')
                     .insert([productData])
                     .select()
@@ -375,7 +375,7 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
 
                 // 1. Images
                 if (isEditMode) {
-                    await supabase.from('product_images').delete().eq('product_id', productId);
+                    await db.from('product_images').delete().eq('product_id', productId);
                 }
                 if (images.length > 0) {
                     const imageInserts = images.map((img, idx) => ({
@@ -384,7 +384,7 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                         position: idx,
                         alt_text: productName
                     }));
-                    await supabase.from('product_images').insert(imageInserts);
+                    await db.from('product_images').insert(imageInserts);
                 }
 
                 // 2. Variants
@@ -393,7 +393,7 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                     // but for now, full replacement is safer to ensure sync.
                     // Note: This might break order-item references if they rely on variant_id hard constraints without cascading.
                     // Our Schema migration has ON DELETE SET NULL for order_items -> variant_id, so this is safe for now (but distinct from "archiving").
-                    await supabase.from('product_variants').delete().eq('product_id', productId);
+                    await db.from('product_variants').delete().eq('product_id', productId);
                 }
 
                 if (variants.length > 0) {
@@ -423,7 +423,7 @@ export default function ProductForm({ initialData, isEditMode = false }: Product
                             metadata: Object.keys(meta).length > 0 ? meta : {},
                         };
                     });
-                    const { error: varError } = await supabase.from('product_variants').insert(variantInserts);
+                    const { error: varError } = await db.from('product_variants').insert(variantInserts);
                     if (varError) throw varError;
                 }
             }

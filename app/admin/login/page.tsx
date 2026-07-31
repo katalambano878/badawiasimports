@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
 
 function AdminLoginForm() {
@@ -27,7 +27,7 @@ function AdminLoginForm() {
     await getToken('admin_login');
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await db.auth.signInWithPassword({
         email,
         password
       });

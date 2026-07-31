@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import CheckoutSteps from '@/components/CheckoutSteps';
 import OrderSummary from '@/components/OrderSummary';
 import { useCart } from '@/context/CartContext';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
 
@@ -63,7 +63,7 @@ export default function CheckoutPage() {
   // Check auth and cart
   useEffect(() => {
     async function checkUser() {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await db.auth.getSession();
       if (session?.user) {
         setUser(session.user);
         setCheckoutType('account'); // Auto-select account checkout if logged in
@@ -142,7 +142,7 @@ export default function CheckoutPage() {
       // user state never causes a server-side mismatch.
       let activeUserId: string | null = null;
       try {
-        const { data: { session: liveSession } } = await supabase.auth.getSession();
+        const { data: { session: liveSession } } = await db.auth.getSession();
         if (liveSession?.user?.id) {
           activeUserId = liveSession.user.id;
         }

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PasswordStrengthMeter from '@/components/PasswordStrengthMeter';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
 
 function getFriendlyError(message: string): string {
@@ -100,7 +100,7 @@ export default function SignupPage() {
 
     try {
       const appBaseUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/+$/, '');
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await db.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {

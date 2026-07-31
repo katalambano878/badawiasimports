@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 export default function AdminCustomersPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -22,7 +22,7 @@ export default function AdminCustomersPage() {
       setLoading(true);
 
       // Fetch from new customers table (includes both guests and registered users)
-      const { data: customerData, error: cError } = await supabase
+      const { data: customerData, error: cError } = await db
         .from('customers')
         .select('*')
         .order('created_at', { ascending: false });
@@ -78,14 +78,14 @@ export default function AdminCustomersPage() {
   // Fallback for when customers table doesn't exist
   const fetchCustomersFromProfiles = async () => {
     try {
-      const { data: profiles, error: pError } = await supabase
+      const { data: profiles, error: pError } = await db
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (pError) throw pError;
 
-      const { data: orders } = await supabase
+      const { data: orders } = await db
         .from('orders')
         .select('id, user_id, email, total, created_at, status, shipping_address');
 

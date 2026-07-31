@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { money } from '@/lib/format-money';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function AdminDashboard() {
@@ -55,7 +55,7 @@ export default function AdminDashboard() {
     async function fetchDashboardData() {
       try {
         // 1. Fetch ALL Orders for count & customers
-        const { data: allOrdersData, error: ordersError } = await supabase
+        const { data: allOrdersData, error: ordersError } = await db
           .from('orders')
           .select('total, status, payment_status, created_at, email');
 
@@ -137,7 +137,7 @@ export default function AdminDashboard() {
         ]);
 
         // 3. Fetch Recent Orders (only paid orders)
-        const { data: recentOrdersData } = await supabase
+        const { data: recentOrdersData } = await db
           .from('orders')
           .select('id, order_number, user_id, email, created_at, total, status, shipping_address')
           .eq('payment_status', 'paid')
@@ -165,7 +165,7 @@ export default function AdminDashboard() {
         }
 
         // 4. Fetch Low Stock Products
-        const { data: lowStockData } = await supabase
+        const { data: lowStockData } = await db
           .from('products')
           .select('name, quantity')
           .lt('quantity', 10)
@@ -182,7 +182,7 @@ export default function AdminDashboard() {
         // 5. Fetch Top Products (Approximation: High Price or just Random for now, 
         // real top selling requires aggregation on order_items which is complex for client-side)
         // real top selling requires aggregation on order_items which is complex for client-side)
-        const { data: productData } = await supabase.from('products').select('*, product_images(url)').limit(4);
+        const { data: productData } = await db.from('products').select('*, product_images(url)').limit(4);
         if (productData) {
           setTopProducts(productData.map((p: any) => ({
             id: p.slug, // Use slug for link

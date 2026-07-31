@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { money } from '@/lib/format-money';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import ProductSalesStats from './ProductSalesStats';
 
 interface Order {
@@ -69,7 +69,7 @@ export default function AdminOrdersPage() {
       setLoading(true);
 
       // Fetch orders with related data
-      const { data: ordersData, error } = await supabase
+      const { data: ordersData, error } = await db
         .from('orders')
         .select(`
           id,
@@ -214,7 +214,7 @@ export default function AdminOrdersPage() {
   const handleBulkAction = async (action: string, newStatus?: string) => {
     if (newStatus) {
       try {
-        const { error } = await supabase
+        const { error } = await db
           .from('orders')
           .update({ status: newStatus as any })
           .in('id', selectedOrders);
@@ -224,7 +224,7 @@ export default function AdminOrdersPage() {
 
 
         // Send Notifications with auth token
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await db.auth.getSession();
         const authToken = session?.access_token;
         
         const updatedOrders = orders.filter(o => selectedOrders.includes(o.id));

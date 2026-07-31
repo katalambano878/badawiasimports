@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 export default function AdminLayout({
   children,
@@ -35,14 +35,14 @@ export default function AdminLayout({
         return;
       }
 
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: { user: authUser } } = await db.auth.getUser();
       if (!authUser) {
         setIsLoading(false);
         router.push('/admin/login');
         return;
       }
 
-      const { data: profile } = await supabase
+      const { data: profile } = await db
         .from('profiles')
         .select('role')
         .eq('id', authUser.id)
@@ -73,7 +73,7 @@ export default function AdminLayout({
   useEffect(() => {
     async function fetchModules() {
       try {
-        const { data, error } = await supabase.from('store_modules').select('id, enabled');
+        const { data, error } = await db.from('store_modules').select('id, enabled');
         if (error) {
           console.warn('Error fetching modules:', error);
           return;
@@ -88,7 +88,7 @@ export default function AdminLayout({
     fetchModules();
 
     // Fetch store name and logo
-    supabase.from('store_settings').select('key, value').in('key', ['site_name', 'site_logo']).then(({ data }) => {
+    db.from('store_settings').select('key, value').in('key', ['site_name', 'site_logo']).then(({ data }) => {
       data?.forEach((row: { key: string; value: unknown }) => {
         const v = row.value != null ? String(row.value) : '';
         if (row.key === 'site_name' && v) setStoreName(v);
@@ -117,7 +117,7 @@ export default function AdminLayout({
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await db.auth.signOut();
     router.push('/admin/login');
   };
 

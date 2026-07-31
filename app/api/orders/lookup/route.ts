@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
@@ -73,14 +73,14 @@ export async function POST(request: Request) {
         )
       `;
 
-    let { data: order, error } = await supabaseAdmin
+    let { data: order, error } = await dbAdmin
       .from('orders')
       .select(selectCols)
       .eq('order_number', orderNumber)
       .maybeSingle();
 
     if (!order && !error && isUuid) {
-      const fallback = await supabaseAdmin
+      const fallback = await dbAdmin
         .from('orders')
         .select(selectCols)
         .eq('id', orderNumber)

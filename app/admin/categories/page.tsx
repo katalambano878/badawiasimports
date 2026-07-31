@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 export default function AdminCategoriesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -32,7 +32,7 @@ export default function AdminCategoriesPage() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('categories')
         .select('*')
         .order('created_at', { ascending: false });
@@ -67,8 +67,8 @@ export default function AdminCategoriesPage() {
     try {
       // Pre-check: count products & sub-categories that depend on this category
       const [{ count: productCount }, { count: childCount }] = await Promise.all([
-        supabase.from('products').select('*', { count: 'exact', head: true }).eq('category_id', categoryId),
-        supabase.from('categories').select('*', { count: 'exact', head: true }).eq('parent_id', categoryId),
+        db.from('products').select('*', { count: 'exact', head: true }).eq('category_id', categoryId),
+        db.from('categories').select('*', { count: 'exact', head: true }).eq('parent_id', categoryId),
       ]);
 
       let confirmMsg = `Delete category "${categoryName}"?\n\nThis action cannot be undone.`;
@@ -83,13 +83,13 @@ export default function AdminCategoriesPage() {
 
       // Manually unset references for installs that haven't run the cascade migration
       if (productCount && productCount > 0) {
-        await supabase.from('products').update({ category_id: null }).eq('category_id', categoryId);
+        await db.from('products').update({ category_id: null }).eq('category_id', categoryId);
       }
       if (childCount && childCount > 0) {
-        await supabase.from('categories').update({ parent_id: null }).eq('parent_id', categoryId);
+        await db.from('categories').update({ parent_id: null }).eq('parent_id', categoryId);
       }
 
-      const { error } = await supabase.from('categories').delete().eq('id', categoryId);
+      const { error } = await db.from('categories').delete().eq('id', categoryId);
 
       if (error) {
         if (error.code === '23503') {
@@ -118,13 +118,13 @@ export default function AdminCategoriesPage() {
       const filePath = `${fileName}`;
 
       // Upload to 'products' bucket for simplicity, or create a 'categories' bucket
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await db.storage
         .from('products')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data: { publicUrl } } = db.storage
         .from('products')
         .getPublicUrl(filePath);
 
@@ -158,14 +158,14 @@ export default function AdminCategoriesPage() {
       };
 
       if (showEditModal && editingCategory) {
-        const { error } = await supabase
+        const { error } = await db
           .from('categories')
           .update(payload)
           .eq('id', editingCategory.id);
         if (error) throw error;
         alert('Category updated');
       } else {
-        const { error } = await supabase
+        const { error } = await db
           .from('categories')
           .insert([payload]);
         if (error) throw error;

@@ -1,8 +1,9 @@
-// Resolve the caller identity for Shape-A /rest|/storage shims.
-// Replaces Supabase RLS for HTTP access (in-process supabaseAdmin bypasses this).
+// Resolve the caller identity for /rest|/storage shims.
+// HTTP ACL only — in-process dbAdmin bypasses this layer.
 
 import { NextRequest } from "next/server";
 import { verifyAccessToken } from "./auth";
+import { appAnonKey, appServiceKey } from "@/lib/env";
 
 export type RestRole = "anon" | "authenticated" | "staff" | "admin" | "service_role";
 
@@ -29,8 +30,8 @@ function bearerToken(req: NextRequest): string | null {
 }
 
 export async function resolveRestActor(req: NextRequest): Promise<RestActor> {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+  const serviceKey = appServiceKey();
+  const anonKey = appAnonKey();
   const key = headerKey(req);
   const token = bearerToken(req);
 

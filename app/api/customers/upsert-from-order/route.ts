@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 
 /**
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     // Light anti-abuse: require an existing order with this email before letting
     // an arbitrary client upsert a customer record. Cuts off blind spam.
     if (order_number) {
-      const { data: order } = await supabaseAdmin
+      const { data: order } = await dbAdmin
         .from('orders')
         .select('id')
         .eq('order_number', order_number)
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const { error } = await supabaseAdmin.rpc('upsert_customer_from_order', {
+    const { error } = await dbAdmin.rpc('upsert_customer_from_order', {
       p_email: email,
       p_phone: phone || null,
       p_full_name: full_name || null,

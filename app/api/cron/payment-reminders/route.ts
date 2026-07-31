@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 import { sendPaymentLink } from '@/lib/notifications';
 
 
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     // 3. Haven't had a reminder sent yet
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
-    const { data: pendingOrders, error } = await supabaseAdmin
+    const { data: pendingOrders, error } = await dbAdmin
       .from('orders')
       .select('id, order_number, email, phone, total, shipping_address, metadata')
       .neq('payment_status', 'paid')
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
         await sendPaymentLink(order);
 
         // Mark as sent
-        await supabaseAdmin
+        await dbAdmin
           .from('orders')
           .update({ 
             payment_reminder_sent: true,

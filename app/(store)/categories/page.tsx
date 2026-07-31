@@ -1,12 +1,12 @@
 import Link from 'next/link';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 import { HERO_IMAGES_OTHER_PAGES } from '@/lib/hero-images';
 import ScrollReveal from '@/components/ScrollReveal';
 
 export const revalidate = 0;
 
 export default async function CategoriesPage() {
-  const { data: categoriesData } = await supabaseAdmin
+  const { data: categoriesData } = await dbAdmin
     .from('categories')
     .select(`
       id,

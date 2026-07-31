@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import ProductForm from '@/components/admin/ProductForm';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -12,7 +12,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     async function fetchProduct() {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from('products')
           .select(`
             *,

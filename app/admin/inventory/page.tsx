@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { money } from '@/lib/format-money';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 export default function InventoryManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,7 +21,7 @@ export default function InventoryManagementPage() {
   const fetchInventory = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('products')
         .select(`
           id,

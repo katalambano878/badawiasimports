@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 import { sendOrderConfirmation } from '@/lib/notifications';
 import { checkMoolreTransaction } from '@/lib/moolre';
 
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
         console.log('[Verify] Checking payment for:', orderNumber, '| fromRedirect:', fromRedirect);
 
         // 1. Check current order status
-        const { data: order, error: fetchError } = await supabaseAdmin
+        const { data: order, error: fetchError } = await dbAdmin
             .from('orders')
             .select('id, order_number, payment_status, status, total, email, phone, shipping_address, metadata')
             .eq('order_number', orderNumber)
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
         console.log('[Verify] Marking order paid via:', verifySource, 'for:', orderNumber);
 
         // 5. Mark as paid
-        const { data: orderJson, error: updateError } = await supabaseAdmin
+        const { data: orderJson, error: updateError } = await dbAdmin
             .rpc('mark_order_paid', {
                 order_ref: orderNumber,
                 moolre_ref: verifySource
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
         // 6. Update customer stats
         if (orderJson?.email) {
             try {
-                await supabaseAdmin.rpc('update_customer_stats', {
+                await dbAdmin.rpc('update_customer_stats', {
                     p_customer_email: orderJson.email,
                     p_order_total: orderJson.total
                 });

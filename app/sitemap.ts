@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 
 function isValidSlug(slug: string | null | undefined): slug is string {
   if (typeof slug !== 'string' || !slug.trim()) return false;
@@ -36,7 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let categoryPages: MetadataRoute.Sitemap = [];
 
   try {
-    const { data: products } = await supabaseAdmin
+    const { data: products } = await dbAdmin
       .from('products')
       .select('slug, updated_at')
       .eq('status', 'active');
@@ -52,7 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }));
     }
 
-    const { data: categories } = await supabaseAdmin
+    const { data: categories } = await dbAdmin
       .from('categories')
       .select('slug, updated_at')
       .eq('status', 'active');

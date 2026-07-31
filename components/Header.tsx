@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import MiniCart from './MiniCart';
 import { useCart } from '@/context/CartContext';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { useCMS } from '@/context/CMSContext';
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from 'framer-motion';
 
@@ -90,11 +90,11 @@ export default function Header() {
     window.addEventListener('wishlistUpdated', updateWishlistCount);
 
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await db.auth.getSession();
       setUser(session?.user ?? null);
     };
     checkUser();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = db.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
     return () => {
@@ -112,7 +112,7 @@ export default function Header() {
     }
     setSearchLoading(true);
     try {
-      const { data } = await supabase
+      const { data } = await db
         .from('products')
         .select('id, slug, name, price, categories!inner(name), product_images!product_id(url, position)')
         .ilike('name', `%${trimmed}%`)

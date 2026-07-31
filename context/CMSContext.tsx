@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import {
   DEFAULT_CONTACT_ADDRESS,
   DEFAULT_CONTACT_MAP_LINK,
@@ -363,9 +363,9 @@ export function CMSProvider({ children }: { children: ReactNode }) {
     const fetchCMSData = useCallback(async () => {
         try {
             const [settingsRes, contentRes, bannersRes] = await Promise.all([
-                supabase.from('store_settings').select('key, value'),
-                supabase.from('cms_content').select('*').eq('is_active', true),
-                supabase.from('banners').select('*').eq('is_active', true),
+                db.from('store_settings').select('key, value'),
+                db.from('cms_content').select('*').eq('is_active', true),
+                db.from('banners').select('*').eq('is_active', true),
             ]);
 
             if (!settingsRes.error && settingsRes.data) {

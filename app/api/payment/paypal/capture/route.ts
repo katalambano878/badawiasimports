@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 import { sendOrderConfirmation } from '@/lib/notifications';
 
 
@@ -60,7 +60,7 @@ export async function GET(req: Request) {
       return NextResponse.redirect(new URL(`/pay/${orderNumber}?error=not_completed`, req.url));
     }
 
-    const { data: order, error: fetchError } = await supabaseAdmin
+    const { data: order, error: fetchError } = await dbAdmin
       .from('orders')
       .select('id, order_number, payment_status, total, email')
       .eq('order_number', orderNumber)
@@ -75,7 +75,7 @@ export async function GET(req: Request) {
       return NextResponse.redirect(new URL(`${baseUrl}/order-success?order=${encodeURIComponent(orderNumber)}${tokenSuffix}`, req.url));
     }
 
-    const { data: orderJson, error: updateError } = await supabaseAdmin.rpc('mark_order_paid', {
+    const { data: orderJson, error: updateError } = await dbAdmin.rpc('mark_order_paid', {
       order_ref: orderNumber,
       moolre_ref: `paypal:${paypalOrderId}`,
     });
@@ -87,7 +87,7 @@ export async function GET(req: Request) {
 
     if (orderJson?.email) {
       try {
-        await supabaseAdmin.rpc('update_customer_stats', {
+        await dbAdmin.rpc('update_customer_stats', {
           p_customer_email: orderJson.email,
           p_order_total: orderJson.total,
         });

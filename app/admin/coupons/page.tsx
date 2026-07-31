@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { money } from '@/lib/format-money';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 export default function AdminCouponsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -19,7 +19,7 @@ export default function AdminCouponsPage() {
   const fetchCoupons = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('coupons')
         .select('*')
         .order('created_at', { ascending: false });

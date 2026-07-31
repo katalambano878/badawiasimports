@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useCMS } from '@/context/CMSContext';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useRecaptcha } from '@/hooks/useRecaptcha';
 import ScrollReveal from '@/components/ScrollReveal';
@@ -165,7 +165,7 @@ export default function ContactPage() {
     }
 
     try {
-      const { error } = await supabase.from('contact_submissions').insert({
+      const { error } = await db.from('contact_submissions').insert({
         name: formData.name,
         email: formData.email,
         phone: formData.phone,

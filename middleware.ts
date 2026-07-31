@@ -1,28 +1,32 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { jwtVerify } from 'jose';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-// Align with lib/db/mode.ts — either flag or DATABASE_URL means plain PG auth path.
-const usePlainPg =
-  process.env.NEXT_PUBLIC_USE_PLAIN_PG === 'true' ||
-  !!(process.env.DATABASE_URL || process.env.POSTGRES_URL);
+import { appPublicUrl } from '@/lib/env';
 
 function extractToken(request: NextRequest): string | undefined {
-  let token = request.cookies.get('sb-access-token')?.value;
+  let token =
+    request.cookies.get('app-access-token')?.value ||
+    request.cookies.get('sb-access-token')?.value;
 
   if (!token) {
-    const projectRef = supabaseUrl?.split('//')[1]?.split('.')[0];
-    if (projectRef) {
-      token = request.cookies.get(`sb-${projectRef}-auth-token`)?.value;
+    const host = (() => {
+      try {
+        return new URL(appPublicUrl() || request.url).hostname.split('.')[0];
+      } catch {
+        return '';
+      }
+    })();
+    if (host) {
+      token = request.cookies.get(`sb-${host}-auth-token`)?.value;
     }
   }
 
   if (!token) {
     for (const [name, cookie] of request.cookies) {
-      if (name.startsWith('sb-') && (name.endsWith('-auth-token') || name.includes('auth'))) {
+      if (
+        (name.startsWith('sb-') || name.startsWith('app-')) &&
+        (name.endsWith('-auth-token') || name.includes('auth'))
+      ) {
         try {
           const parsed = JSON.parse(cookie.value);
           if (Array.isArray(parsed) && parsed[0]) {
@@ -43,7 +47,9 @@ function extractToken(request: NextRequest): string | undefined {
   return token;
 }
 
-async function verifyPlainPgAdmin(token: string): Promise<{ ok: boolean; userId?: string; role?: string }> {
+async function verifyAdmin(
+  token: string
+): Promise<{ ok: boolean; userId?: string; role?: string }> {
   const secret =
     process.env.AUTH_JWT_SECRET ||
     process.env.JWT_SECRET ||
@@ -51,7 +57,17 @@ async function verifyPlainPgAdmin(token: string): Promise<{ ok: boolean; userId?
   if (!secret) return { ok: false };
 
   try {
-    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
+    // Cookie may hold JSON session; extract bare JWT if needed
+    let jwt = token;
+    try {
+      const parsed = JSON.parse(token);
+      if (parsed?.access_token) jwt = parsed.access_token;
+      else if (Array.isArray(parsed) && parsed[0]) jwt = parsed[0];
+    } catch {
+      /* bare jwt */
+    }
+
+    const { payload } = await jwtVerify(jwt, new TextEncoder().encode(secret));
     if (payload.typ === 'refresh') return { ok: false };
     const userId = typeof payload.sub === 'string' ? payload.sub : undefined;
     if (!userId) return { ok: false };
@@ -81,62 +97,22 @@ export async function middleware(request: NextRequest) {
     }
 
     const token = extractToken(request);
-
     if (!token) {
       const loginUrl = new URL('/admin/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    if (usePlainPg) {
-      const verified = await verifyPlainPgAdmin(token);
-      if (!verified.ok) {
-        const loginUrl = new URL('/admin/login', request.url);
-        loginUrl.searchParams.set('redirect', pathname);
-        loginUrl.searchParams.set('error', 'session_expired');
-        return NextResponse.redirect(loginUrl);
-      }
-      if (verified.userId) response.headers.set('x-user-id', verified.userId);
-      if (verified.role) response.headers.set('x-user-role', verified.role);
-      return response;
+    const verified = await verifyAdmin(token);
+    if (!verified.ok) {
+      const loginUrl = new URL('/admin/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      loginUrl.searchParams.set('error', 'session_expired');
+      return NextResponse.redirect(loginUrl);
     }
-
-    if (supabaseServiceKey) {
-      try {
-        const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-          auth: { autoRefreshToken: false, persistSession: false },
-        });
-
-        const {
-          data: { user },
-          error,
-        } = await supabase.auth.getUser(token);
-
-        if (error || !user) {
-          const loginUrl = new URL('/admin/login', request.url);
-          loginUrl.searchParams.set('redirect', pathname);
-          loginUrl.searchParams.set('error', 'session_expired');
-          return NextResponse.redirect(loginUrl);
-        }
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-
-        if (!profile || (profile.role !== 'admin' && profile.role !== 'staff')) {
-          const loginUrl = new URL('/admin/login', request.url);
-          loginUrl.searchParams.set('error', 'unauthorized');
-          return NextResponse.redirect(loginUrl);
-        }
-
-        response.headers.set('x-user-id', user.id);
-        response.headers.set('x-user-role', profile.role);
-      } catch (err) {
-        console.error('[Middleware] Auth check error:', err);
-      }
-    }
+    if (verified.userId) response.headers.set('x-user-id', verified.userId);
+    if (verified.role) response.headers.set('x-user-role', verified.role);
+    return response;
   }
 
   if (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, Fragment } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 interface SalesStat {
     productId: string;
@@ -47,7 +47,7 @@ export default function ProductSalesStats({ isOpen, onClose }: { isOpen: boolean
 
         try {
             // We fetch order_items and filter by the parent order's created_at
-            let query = supabase
+            let query = db
                 .from('order_items')
                 .select(`
           quantity,

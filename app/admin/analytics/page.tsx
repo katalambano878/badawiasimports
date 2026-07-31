@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { money } from '@/lib/format-money';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, AreaChart, Area, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function AnalyticsPage() {
@@ -41,7 +41,7 @@ export default function AnalyticsPage() {
       const isoStart = startDate.toISOString();
 
       // Fetch Orders for Revenue & Count - only PAID orders count as revenue
-      const { data: orders, error: orderError } = await supabase
+      const { data: orders, error: orderError } = await db
         .from('orders')
         .select('id, created_at, total, payment_status')
         .gte('created_at', isoStart)
@@ -53,7 +53,7 @@ export default function AnalyticsPage() {
 
       // Fetch Order Items for Products & Categories
       // This might be heavy for large DBs, but fine for typical small shop admin
-      const { data: items, error: itemError } = await supabase
+      const { data: items, error: itemError } = await db
         .from('order_items')
         .select(`
             *,
@@ -67,7 +67,7 @@ export default function AnalyticsPage() {
       let validItems: any[] = [];
       if (orders && orders.length > 0) {
         const orderIds = orders.map(o => o.id);
-        const { data: fetchedItems, error: itemFetchError } = await supabase
+        const { data: fetchedItems, error: itemFetchError } = await db
           .from('order_items')
           .select(`
             quantity, 

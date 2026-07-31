@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { money } from '@/lib/format-money';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 interface ProductVariant {
     id: string;
@@ -90,7 +90,7 @@ export default function POSPage() {
         try {
             setLoading(true);
             // Fetch Products with variants
-            const { data: prodData } = await supabase
+            const { data: prodData } = await db
                 .from('products')
                 .select(`
           id, name, price, quantity, sku, metadata,
@@ -135,7 +135,7 @@ export default function POSPage() {
             }
 
             // Fetch Customers from customers table (not profiles)
-            const { data: custData } = await supabase
+            const { data: custData } = await db
                 .from('customers')
                 .select('id, full_name, email, phone')
                 .order('full_name')
@@ -342,7 +342,7 @@ export default function POSPage() {
             };
 
             // 1. Create Order
-            const { data: order, error: orderError } = await supabase
+            const { data: order, error: orderError } = await db
                 .from('orders')
                 .insert([{
                     order_number: orderNumber,
@@ -385,7 +385,7 @@ export default function POSPage() {
                 metadata: { image: item.image, pos_sale: true, variant_label: item.variantLabel }
             }));
 
-            const { error: itemsError } = await supabase
+            const { error: itemsError } = await db
                 .from('order_items')
                 .insert(orderItems);
 
@@ -415,7 +415,7 @@ export default function POSPage() {
                             order_number: orderNumber,
                         }),
                     });
-                    supabase.from('customers').select('id, full_name, email, phone').order('full_name').limit(200)
+                    db.from('customers').select('id, full_name, email, phone').order('full_name').limit(200)
                         .then(({ data }) => { if (data) setCustomers(data); });
                 } catch (custErr) {
                     console.error('Customer upsert error (non-fatal):', custErr);
@@ -445,7 +445,7 @@ export default function POSPage() {
 
                 // Send notification
                 if (customerEmail && customerEmail !== 'pos-walkin@store.local') {
-                    const { data: { session } } = await supabase.auth.getSession();
+                    const { data: { session } } = await db.auth.getSession();
                     fetch('/api/notifications', {
                         method: 'POST',
                         headers: {

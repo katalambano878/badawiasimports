@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import Link from 'next/link';
 
 interface Banner {
@@ -37,7 +37,7 @@ export default function AnnouncementBar() {
         try {
             const now = new Date().toISOString();
 
-            const { data, error } = await supabase
+            const { data, error } = await db
                 .from('banners')
                 .select('*')
                 .eq('is_active', true)

@@ -1,8 +1,8 @@
 # Badawias Imports — Full System Audit
 
-**Date:** 2026-07-30  
+**Date:** 2026-07-31 (updated)  
 **Branch:** `staging/plain-postgres`  
-**Architecture:** Shape A — `@supabase/supabase-js` browser client → self-hosted `/rest/v1`, `/auth/v1`, `/storage/v1` → `pg` pool  
+**Architecture:** First-party `lib/app-client` + `dbAdmin` → self-hosted `/rest/v1`, `/auth/v1`, `/storage/v1` → `pg` pool (**no `@supabase/*` packages**)  
 **Staging:** https://badawiasimports-staging.169-58-8-203.sslip.io  
 **Production:** https://www.badawiasimports.com  
 
@@ -31,21 +31,22 @@
 ## Architecture summary
 
 ```
-Browser (@supabase/ssr)
-  → NEXT_PUBLIC_SUPABASE_URL (app origin)
+Browser (lib/app-client.ts)
+  → NEXT_PUBLIC_APP_URL (app origin; dual-read old SUPABASE_URL)
     → /rest/v1 + /auth/v1 + /storage/v1  (ACL-gated)
-    → lib/db/supabase-compat → pg Pool
+    → lib/db/query-builder → pg Pool
 
 Server APIs
-  → supabaseAdmin → createPgClient() when DATABASE_URL set
+  → lib/db/admin.ts (dbAdmin) → in-process query builder → pg
 ```
 
 - **ORM:** none — custom PostgREST-compat over `pg`
-- **Auth:** JWT (jose + bcrypt) against `auth.users` / `profiles.role`
+- **Auth:** JWT (jose + bcrypt) against `auth.users` / `profiles.role`; middleware JWT-only
 - **Storage:** local disk via `lib/db/storage.ts`
 - **Payments:** Moolre, Paystack, Stripe, PayPal (no Hubtel)
 - **SMS:** Moolre VAS
 - **Email:** Resend
+- **Runtime Supabase packages:** removed (2026-07-31)
 
 ---
 
@@ -113,7 +114,7 @@ SMS: `lib/notifications.ts` → Moolre `open/sms/send` with 12s timeout.
 - Storage write auth
 - Middleware plain-PG detection unified
 - Mark-paid JWT auth for plain PG
-- Categories + notifications → `supabaseAdmin`
+- Categories + notifications → `dbAdmin`
 - Moolre callback: no overwrite of paid; event ledger writes
 - Paystack verify: amount + currency checks + timeout
 - Moolre status + SMS timeouts
@@ -129,7 +130,7 @@ SMS: `lib/notifications.ts` → Moolre `open/sms/send` with 12s timeout.
 | Risk | Severity | Notes |
 |------|----------|-------|
 | Admin UI still mutates via browser REST | Medium | Mitigated by staff JWT ACL; prefer `/api/admin/*` long-term |
-| Shape A keeps `@supabase/*` packages | Low | Intentional; full SDK removal is a future phase |
+| Coolify still has old `NEXT_PUBLIC_SUPABASE_*` names | Low | Dual-read works; set `NEXT_PUBLIC_APP_ANON_KEY` / `APP_SERVICE_KEY` then drop aliases |
 | Paystack has no server webhook route | Medium | Relies on verify after redirect + manual reconcile |
 | Hubtel not implemented | Info | Prompt assumed Hubtel; not in this product |
 | `ignoreBuildErrors: true` | Medium | Masks TS debt |

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { money } from '@/lib/format-money';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 export default function ProductsPage() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -36,14 +36,14 @@ export default function ProductsPage() {
   }, [sortBy]);
 
   const fetchCategories = async () => {
-    const { data } = await supabase.from('categories').select('name');
+    const { data } = await db.from('categories').select('name');
     if (data) setCategories(data);
   };
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      let query = supabase
+      let query = db
         .from('products')
         .select(`
           *,
@@ -120,11 +120,11 @@ export default function ProductsPage() {
 
     try {
       // 1. Clean up owned data first (works whether or not the migration has run)
-      await supabase.from('product_images').delete().eq('product_id', productId);
-      await supabase.from('product_variants').delete().eq('product_id', productId);
+      await db.from('product_images').delete().eq('product_id', productId);
+      await db.from('product_variants').delete().eq('product_id', productId);
 
       // 2. Delete the product
-      const { error } = await supabase.from('products').delete().eq('id', productId);
+      const { error } = await db.from('products').delete().eq('id', productId);
 
       if (error) {
         if (error.code === '23503') {
@@ -148,10 +148,10 @@ export default function ProductsPage() {
     }
 
     try {
-      await supabase.from('product_images').delete().in('product_id', selectedProducts);
-      await supabase.from('product_variants').delete().in('product_id', selectedProducts);
+      await db.from('product_images').delete().in('product_id', selectedProducts);
+      await db.from('product_variants').delete().in('product_id', selectedProducts);
 
-      const { error } = await supabase.from('products').delete().in('id', selectedProducts);
+      const { error } = await db.from('products').delete().in('id', selectedProducts);
 
       if (error) {
         if (error.code === '23503') {

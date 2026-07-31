@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { money, asNumber } from '@/lib/format-money';
 
 function InvoiceContent() {
@@ -19,13 +19,13 @@ function InvoiceContent() {
   useEffect(() => {
     async function load() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await db.auth.getSession();
         if (!session?.user) {
           setError('Please sign in to view this invoice.');
           return;
         }
 
-        const { data, error: qError } = await supabase
+        const { data, error: qError } = await db
           .from('orders')
           .select('*, order_items (*)')
           .eq('id', id)

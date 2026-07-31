@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/db/supabase-compat";
+import { createClient } from "@/lib/db/query-builder";
 import { isPlainPostgres } from "@/lib/db/mode";
 import { resolveRestActor } from "@/lib/db/rest-auth";
 import { authorizeRpc } from "@/lib/db/rest-acl";

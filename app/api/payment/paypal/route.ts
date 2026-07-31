@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { money } from '@/lib/format-money';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 
 
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: 'Missing orderId' }, { status: 400 });
     }
 
-    const { data: existingOrder, error: orderFetchError } = await supabaseAdmin
+    const { data: existingOrder, error: orderFetchError } = await dbAdmin
       .from('orders')
       .select('order_number, payment_status, total, metadata')
       .eq('order_number', orderId)

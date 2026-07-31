@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { defaultSettings } from '@/context/CMSContext';
 import { applyCanonicalContact } from '@/lib/contact';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -65,7 +65,7 @@ export default function SettingsPage() {
     // Load settings from DB
     const fetchSettings = useCallback(async () => {
         try {
-            const { data, error } = await supabase.from('store_settings').select('key, value');
+            const { data, error } = await db.from('store_settings').select('key, value');
             if (error) throw error;
             const map: Record<string, string> = {};
             (data || []).forEach((row: any) => {
@@ -98,7 +98,7 @@ export default function SettingsPage() {
             // Upsert each setting
             const entries = Object.entries(settings).filter(([_, v]) => v !== undefined);
             for (const [key, value] of entries) {
-                const { error } = await supabase.from('store_settings').upsert(
+                const { error } = await db.from('store_settings').upsert(
                     { key, value, updated_at: new Date().toISOString() },
                     { onConflict: 'key' }
                 );

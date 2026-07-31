@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 export default function NotificationsPage() {
     const [loading, setLoading] = useState(false);
@@ -23,13 +23,13 @@ export default function NotificationsPage() {
 
         try {
             // 1. Get auth token for admin verification
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await db.auth.getSession();
             if (!session?.access_token) {
                 throw new Error('You must be logged in as admin to send campaigns');
             }
 
             // 2. Fetch Recipients from the customers table (includes secondary contacts)
-            const { data: customers, error: fetchError } = await supabase
+            const { data: customers, error: fetchError } = await db
                 .from('customers')
                 .select('email, phone, full_name, secondary_phone, secondary_email');
 

@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from 'react';
 import { money } from '@/lib/format-money';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { usePageTitle } from '@/hooks/usePageTitle';
 
 export default function PaymentPage() {
@@ -32,7 +32,7 @@ function PaymentPageInner() {
   const [storeName, setStoreName] = useState(process.env.NEXT_PUBLIC_SITE_NAME || "BADAWIA'S IMPORTS");
 
   useEffect(() => {
-    supabase.from('store_settings').select('value').eq('key', 'site_name').single()
+    db.from('store_settings').select('value').eq('key', 'site_name').single()
       .then(({ data }) => { if (data?.value) setStoreName(typeof data.value === 'string' ? data.value : String(data.value)); });
 
     async function fetchOrder() {

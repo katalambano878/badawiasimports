@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { dbAdmin } from '@/lib/db/admin';
 import { sendOrderConfirmation } from '@/lib/notifications';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 import { checkMoolreTransaction } from '@/lib/moolre';
@@ -218,7 +218,7 @@ export async function POST(req: Request) {
             console.log(`[Callback] Payment SUCCESS for Order ${merchantOrderRef}`);
 
             // Check if order exists
-            const { data: existingOrder, error: fetchError } = await supabaseAdmin
+            const { data: existingOrder, error: fetchError } = await dbAdmin
                 .from('orders')
                 .select('id, order_number, payment_status, total')
                 .eq('order_number', merchantOrderRef)
@@ -268,7 +268,7 @@ export async function POST(req: Request) {
             }
 
             // Mark order as paid via RPC
-            const { data: orderJson, error: updateError } = await supabaseAdmin
+            const { data: orderJson, error: updateError } = await dbAdmin
                 .rpc('mark_order_paid', {
                     order_ref: merchantOrderRef,
                     moolre_ref: String(moolreReference)
@@ -289,7 +289,7 @@ export async function POST(req: Request) {
             // Update customer stats
             try {
                 if (orderJson.email) {
-                    await supabaseAdmin.rpc('update_customer_stats', {
+                    await dbAdmin.rpc('update_customer_stats', {
                         p_customer_email: orderJson.email,
                         p_order_total: orderJson.total
                     });
@@ -320,7 +320,7 @@ export async function POST(req: Request) {
             // Payment failed — never overwrite a previously successful payment
             console.log(`[Callback] Payment FAILED for ${merchantOrderRef} | Status: ${apiStatus} | TX: ${txStatus}`);
 
-            const { data: failedOrder } = await supabaseAdmin
+            const { data: failedOrder } = await dbAdmin
                 .from('orders')
                 .select('metadata, payment_status')
                 .eq('order_number', merchantOrderRef)
@@ -337,7 +337,7 @@ export async function POST(req: Request) {
                 failure_reason: body.message || 'Payment failed'
             };
 
-            await supabaseAdmin
+            await dbAdmin
                 .from('orders')
                 .update({
                     payment_status: 'failed',

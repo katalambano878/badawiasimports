@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 interface ImageUploadProps {
     label: string;
@@ -32,7 +32,7 @@ export default function ImageUpload({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const getPublicUrl = (path: string) => {
-        const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+        const { data } = db.storage.from(bucket).getPublicUrl(path);
         return data.publicUrl;
     };
 
@@ -64,7 +64,7 @@ export default function ImageUpload({
             const filePath = `${folder}/${safeName}-${timestamp}.${ext}`;
 
             // Upload to Supabase Storage
-            const { error: uploadError } = await supabase.storage
+            const { error: uploadError } = await db.storage
                 .from(bucket)
                 .upload(filePath, file, {
                     cacheControl: '3600',

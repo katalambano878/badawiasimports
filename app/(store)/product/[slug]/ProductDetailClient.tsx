@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { money } from '@/lib/format-money';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 import { cachedQuery } from '@/lib/query-cache';
 import ProductCard from '@/components/ProductCard';
 import ProductReviews from '@/components/ProductReviews';
@@ -53,7 +53,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
         const { data: productData, error } = await cachedQuery<{ data: any; error: any }>(
           `product:${slug}`,
           async () => {
-            let query = supabase
+            let query = db
               .from('products')
               .select(`
                 *,
@@ -137,7 +137,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
         if (productData.category_id) {
           const { data: related } = await cachedQuery<{ data: any; error: any }>(
             `related:${productData.category_id}:${productData.id}`,
-            (() => supabase
+            (() => db
               .from('products')
               .select('*, product_images(url, position), product_variants(id, name, price, quantity)')
               .eq('category_id', productData.category_id)
