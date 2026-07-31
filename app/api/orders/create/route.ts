@@ -99,29 +99,40 @@ export async function POST(request: Request) {
       else slugs.push(item.id);
     }
 
-    const productMap = new Map<string, { id: string; name: string; price: number; sale_price: number | null; metadata: Record<string, unknown> | null; slug: string | null }>();
+    // DB has price + optional sale_price + compare_at_price.
+    // Charge sale_price when it is a positive value lower than price; otherwise price.
+    type ProductRow = {
+      id: string;
+      name: string;
+      price: number;
+      sale_price: number | null;
+      compare_at_price: number | null;
+      metadata: Record<string, unknown> | null;
+      slug: string | null;
+    };
+    const productMap = new Map<string, ProductRow>();
 
     if (ids.length > 0) {
       const { data, error } = await supabaseAdmin
         .from('products')
-        .select('id, name, price, sale_price, metadata, slug')
+        .select('id, name, price, sale_price, compare_at_price, metadata, slug')
         .in('id', ids);
       if (error) {
         console.error('[orders/create] product lookup by id failed:', error.message);
         return NextResponse.json({ error: 'Could not validate cart' }, { status: 500 });
       }
-      for (const p of data || []) productMap.set(p.id, p);
+      for (const p of data || []) productMap.set(p.id, p as ProductRow);
     }
     if (slugs.length > 0) {
       const { data, error } = await supabaseAdmin
         .from('products')
-        .select('id, name, price, sale_price, metadata, slug')
+        .select('id, name, price, sale_price, compare_at_price, metadata, slug')
         .in('slug', slugs);
       if (error) {
         console.error('[orders/create] product lookup by slug failed:', error.message);
         return NextResponse.json({ error: 'Could not validate cart' }, { status: 500 });
       }
-      for (const p of data || []) {
+      for (const p of (data || []) as ProductRow[]) {
         productMap.set(p.id, p);
         if (p.slug) productMap.set(p.slug, p);
       }
@@ -144,7 +155,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: `Product not found: ${item.name || item.id}` }, { status: 400 });
       }
       const qty = Math.max(1, Math.floor(Number(item.quantity) || 1));
-      const unit = Number(product.sale_price ?? product.price);
+      const listPrice = Number(product.price);
+      const sale = product.sale_price == null ? null : Number(product.sale_price);
+      const unit =
+        sale != null && Number.isFinite(sale) && sale > 0 && sale < listPrice
+          ? sale
+          : listPrice;
       if (!Number.isFinite(unit) || unit < 0) {
         return NextResponse.json({ error: `Invalid price for product: ${product.name}` }, { status: 400 });
       }
