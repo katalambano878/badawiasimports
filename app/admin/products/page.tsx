@@ -119,19 +119,16 @@ export default function ProductsPage() {
     }
 
     try {
-      // 1. Clean up owned data first (works whether or not the migration has run)
-      await db.from('product_images').delete().eq('product_id', productId);
-      await db.from('product_variants').delete().eq('product_id', productId);
+      const res = await fetch('/api/admin/products/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ id: productId }),
+      });
+      const json = await res.json().catch(() => ({}));
 
-      // 2. Delete the product
-      const { error } = await db.from('products').delete().eq('id', productId);
-
-      if (error) {
-        if (error.code === '23503') {
-          alert(`Cannot delete "${productName}".\n\nIt's referenced by existing orders, reviews, or other records. Try setting its status to "inactive" instead, or run the latest database migration.`);
-        } else {
-          alert(`Error deleting "${productName}":\n\n${error.message}`);
-        }
+      if (!res.ok) {
+        alert(`Error deleting "${productName}":\n\n${json.error || res.statusText}`);
         return;
       }
 
@@ -148,17 +145,16 @@ export default function ProductsPage() {
     }
 
     try {
-      await db.from('product_images').delete().in('product_id', selectedProducts);
-      await db.from('product_variants').delete().in('product_id', selectedProducts);
+      const res = await fetch('/api/admin/products/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ ids: selectedProducts }),
+      });
+      const json = await res.json().catch(() => ({}));
 
-      const { error } = await db.from('products').delete().in('id', selectedProducts);
-
-      if (error) {
-        if (error.code === '23503') {
-          alert(`Cannot delete some products — they're referenced by existing orders or other records.\n\nTry setting them to "inactive" instead, or run the latest database migration.`);
-        } else {
-          alert(`Error deleting products:\n\n${error.message}`);
-        }
+      if (!res.ok) {
+        alert(`Error deleting products:\n\n${json.error || res.statusText}`);
         return;
       }
 
