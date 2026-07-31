@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { supabase } from '@/lib/supabase';
 import { useCMS } from '@/context/CMSContext';
 import ProductCard, { type ColorVariant, getColorHex } from '@/components/ProductCard';
 import AnimatedSection, { AnimatedGrid } from '@/components/AnimatedSection';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HERO_SLIDES_HOME } from '@/lib/hero-images';
+import { optimizedImageUrl } from '@/lib/image-url';
 
 function buildColorVariants(product: any): ColorVariant[] {
   const variants = product.product_variants || [];
@@ -55,15 +55,20 @@ export default function Home() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [{ data: featured }, { data: newest }, { data: cats }] = await Promise.all([
-          supabase.from('products').select('*, product_variants(*), product_images(*)').eq('status', 'active').eq('featured', true).order('created_at', { ascending: false }).limit(8),
-          supabase.from('products').select('*, product_variants(*), product_images(*)').eq('status', 'active').order('created_at', { ascending: false }).limit(8),
-          supabase.from('categories').select('id, name, slug, image_url, metadata').eq('status', 'active').order('name'),
+        const [featuredRes, newestRes, catsRes] = await Promise.all([
+          fetch('/api/storefront/products?featured=true&limit=8'),
+          fetch('/api/storefront/products?limit=8'),
+          fetch('/api/storefront/categories'),
         ]);
-        setFeaturedProducts(featured || []);
-        setNewProducts(newest || []);
+        const featuredJson = featuredRes.ok ? await featuredRes.json() : null;
+        const newestJson = newestRes.ok ? await newestRes.json() : null;
+        const cats = catsRes.ok ? await catsRes.json() : [];
+        const featured = Array.isArray(featuredJson) ? featuredJson : featuredJson?.products || [];
+        const newest = Array.isArray(newestJson) ? newestJson : newestJson?.products || [];
+        setFeaturedProducts(featured);
+        setNewProducts(newest);
         const featCats = (cats || []).filter((c: any) => c.metadata?.featured).slice(0, 5);
-        setCategories(featCats.length >= 4 ? featCats.slice(0,4) : featCats); // Bento grid looks best with 4
+        setCategories(featCats.length >= 4 ? featCats.slice(0, 4) : featCats);
       } catch (e) {
         console.error(e);
       } finally {
@@ -385,7 +390,7 @@ export default function Home() {
                           originalPrice={product.compare_at_price}
                           salePrice={product.sale_price || null}
                           isSaleActive={isSaleActive}
-                          image={product.product_images?.[0]?.url || 'https://placehold.co/400x500/0D1B45/FFFFFF?text=Product'}
+                          image={optimizedImageUrl(product.product_images?.[0]?.url, 600) || 'https://placehold.co/400x500/0D1B45/FFFFFF?text=Product'}
                           rating={product.rating_avg || 5}
                           reviewCount={product.review_count || 0}
                           badge={product.featured ? 'Iconic' : undefined}

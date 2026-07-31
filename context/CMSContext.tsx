@@ -362,42 +362,29 @@ export function CMSProvider({ children }: { children: ReactNode }) {
 
     const fetchCMSData = useCallback(async () => {
         try {
-            // Fetch store_settings
-            const { data: settingsData, error: settingsError } = await supabase
-                .from('store_settings')
-                .select('key, value');
+            const [settingsRes, contentRes, bannersRes] = await Promise.all([
+                supabase.from('store_settings').select('key, value'),
+                supabase.from('cms_content').select('*').eq('is_active', true),
+                supabase.from('banners').select('*').eq('is_active', true),
+            ]);
 
-            if (!settingsError && settingsData) {
+            if (!settingsRes.error && settingsRes.data) {
                 const merged = { ...defaultSettings };
-                settingsData.forEach((row: any) => {
+                settingsRes.data.forEach((row: any) => {
                     if (row.key && row.value !== null && row.value !== undefined) {
-                        // value is jsonb, could be a string or object
                         merged[row.key] = typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
                     }
                 });
-                applyCanonicalContact(merged as unknown as Record<string, string>); // ensure contact defaults exist
+                applyCanonicalContact(merged as unknown as Record<string, string>);
                 setSettings(merged);
             }
 
-            // Fetch CMS content blocks
-            const { data: contentData, error: contentError } = await supabase
-                .from('cms_content')
-                .select('*')
-                .eq('is_active', true);
-
-            if (!contentError && contentData) {
-                setContent(contentData);
+            if (!contentRes.error && contentRes.data) {
+                setContent(contentRes.data);
             }
 
-            // Fetch banners
-            const { data: bannersData, error: bannersError } = await supabase
-                .from('banners')
-                .select('*')
-                .eq('is_active', true)
-                .order('sort_order');
-
-            if (!bannersError && bannersData) {
-                setBanners(bannersData);
+            if (!bannersRes.error && bannersRes.data) {
+                setBanners(bannersRes.data);
             }
         } catch (err) {
             console.warn('CMSProvider: Failed to fetch CMS data', err);

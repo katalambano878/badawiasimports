@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { optimizedImageUrl } from '@/lib/image-url';
 
 interface LazyImageProps {
   src: string;
@@ -51,8 +52,11 @@ export default function LazyImage({
     onLoad?.();
   };
 
+  // Prefer storage optimizer (?w=&f=webp) for product photos.
+  const resolvedSrc = optimizedImageUrl(src, width && width > 0 ? width : 720);
+
   // Fallback for invalid/empty URLs
-  if (!src || hasError) {
+  if (!resolvedSrc || hasError) {
     return (
       <div
         className={`relative overflow-hidden bg-gray-200 flex items-center justify-center ${className}`}
@@ -69,7 +73,7 @@ export default function LazyImage({
         <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 animate-pulse z-10" />
       )}
       <Image
-        src={src}
+        src={resolvedSrc}
         alt={alt}
         fill
         sizes={sizes}

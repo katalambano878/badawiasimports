@@ -1,72 +1,124 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
-// Simple in-memory cache
-let cache: { data: any; timestamp: number } | null = null;
-const CACHE_TTL = 15 * 60 * 1000; // 15 minutes — products don't change frequently
+// Simple in-memory cache keyed by query string
+const cache = new Map<string, { data: unknown; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const featured = searchParams.get('featured') === 'true';
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const category = searchParams.get('category');
+  const { searchParams } = new URL(request.url);
+  const featured = searchParams.get('featured') === 'true';
+  const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10) || 50, 100);
+  const page = Math.max(parseInt(searchParams.get('page') || '1', 10) || 1, 1);
+  const category = searchParams.get('category');
+  const search = searchParams.get('search');
+  const sort = searchParams.get('sort') || 'new';
+  const slim = searchParams.get('slim') !== '0';
 
-    // Build a cache key from params
-    const cacheKey = `${featured}-${limit}-${category || 'all'}`;
+  const cacheKey = `${featured}|${limit}|${page}|${category || ''}|${search || ''}|${sort}|${slim}`;
+  const hit = cache.get(cacheKey);
+  if (hit && Date.now() - hit.timestamp < CACHE_TTL) {
+    return NextResponse.json(hit.data, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900',
+        'X-Cache': 'HIT',
+      },
+    });
+  }
 
-    // Check cache (only for featured/home requests — general shop is more dynamic)
-    if (featured && cache && cache.data?.[cacheKey] && Date.now() - cache.timestamp < CACHE_TTL) {
-        return NextResponse.json(cache.data[cacheKey], {
-            headers: {
-                'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=1800',
-                'X-Cache': 'HIT'
-            }
-        });
+  try {
+    // Slim select: one image embed (ordered by position) + light variant fields
+    const select = slim
+      ? `
+        id, name, slug, price, sale_price, compare_at_price, quantity, moq,
+        rating_avg, review_count, featured, brand, vendor, metadata, created_at,
+        categories(id, name, slug, parent_id),
+        product_images(url, position),
+        product_variants(id, name, price, quantity, option1, option2, image_url)
+      `
+      : `
+        id, name, slug, price, sale_price, compare_at_price, quantity, description, metadata, brand, vendor, moq, featured, rating_avg, review_count, created_at,
+        categories(id, name, slug, parent_id),
+        product_images(url, position),
+        product_variants(id, name, price, quantity, option1, option2, image_url)
+      `;
+
+    let query = supabaseAdmin
+      .from('products')
+      .select(select, { count: 'exact' })
+      .eq('status', 'active');
+
+    if (featured) {
+      query = query.eq('featured', true);
     }
 
-    try {
-        let query = supabaseAdmin
-            .from('products')
-            .select(`
-                id, name, slug, price, compare_at_price, quantity, description, metadata, brand, vendor,
-                categories(id, name, slug),
-                product_images(url, position),
-                product_variants(id, name, price, quantity)
-            `)
-            .order('created_at', { ascending: false });
-
-        // Always filter active products
-        query = query.eq('status', 'active');
-
-        if (featured) {
-            query = query.eq('featured', true).limit(limit);
-        } else if (category) {
-            // Filter by category slug or name
-            query = query.limit(limit);
-        } else {
-            query = query.limit(limit);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-            console.error('[Storefront API] Products error:', error);
-            return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
-        }
-
-        // Cache the result
-        if (!cache) cache = { data: {}, timestamp: Date.now() };
-        cache.data[cacheKey] = data;
-        cache.timestamp = Date.now();
-
-        return NextResponse.json(data, {
-            headers: {
-                'Cache-Control': 'public, s-maxage=900, stale-while-revalidate=1800',
-                'X-Cache': 'MISS'
-            }
-        });
-    } catch (err: any) {
-        console.error('[Storefront API] Error:', err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    if (search) {
+      query = query.ilike('name', `%${search}%`);
     }
+
+    if (category && category !== 'all') {
+      const { data: cat } = await supabaseAdmin
+        .from('categories')
+        .select('id')
+        .eq('slug', category)
+        .maybeSingle();
+      if (cat?.id) {
+        query = query.eq('category_id', cat.id);
+      }
+    }
+
+    switch (sort) {
+      case 'price-low':
+        query = query.order('price', { ascending: true });
+        break;
+      case 'price-high':
+        query = query.order('price', { ascending: false });
+        break;
+      case 'rating':
+        query = query.order('rating_avg', { ascending: false });
+        break;
+      case 'popular':
+      case 'new':
+      default:
+        query = query.order('created_at', { ascending: false });
+        break;
+    }
+
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('[Storefront API] Products error:', error);
+      return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
+    }
+
+    // Keep only first image per product (sorted by position in compat layer)
+    const trimmed = (data || []).map((p: Record<string, unknown>) => {
+      const images = Array.isArray(p.product_images) ? p.product_images : [];
+      const sorted = [...images].sort(
+        (a: any, b: any) => (a?.position ?? 0) - (b?.position ?? 0)
+      );
+      return {
+        ...p,
+        product_images: sorted.slice(0, 1),
+      };
+    });
+
+    const payload = { products: trimmed, count: count ?? trimmed.length, page, limit };
+    cache.set(cacheKey, { data: payload, timestamp: Date.now() });
+
+    return NextResponse.json(payload, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900',
+        'X-Cache': 'MISS',
+      },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Error';
+    console.error('[Storefront API] Error:', err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

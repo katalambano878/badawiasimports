@@ -1,5 +1,5 @@
 // Badawias Imports — network-first pages; no HTML shell cache (playbook §16)
-const CACHE_VERSION = 'sw-v2.5-badawias';
+const CACHE_VERSION = 'sw-v2.6-badawias';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const IMAGE_CACHE = `images-${CACHE_VERSION}`;
 const API_CACHE = `api-${CACHE_VERSION}`;
@@ -10,7 +10,7 @@ const STATIC_ASSETS = [
   '/logo.svg',
 ];
 
-const IMAGE_CACHE_LIMIT = 80;
+const IMAGE_CACHE_LIMIT = 120;
 const API_CACHE_LIMIT = 30;
 
 async function trimCache(cacheName, maxItems) {
@@ -90,8 +90,41 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Product / CMS images on disk: network only (never poison with SVG fallback)
-  if (url.pathname.startsWith('/uploads/') || url.pathname.startsWith('/storage/')) {
+  // Public product images: cache-first after first successful image response
+  if (
+    url.pathname.startsWith('/storage/v1/object/public/') ||
+    url.pathname.startsWith('/uploads/')
+  ) {
+    event.respondWith(
+      caches.open(IMAGE_CACHE).then(async (cache) => {
+        const cached = await cache.match(request);
+        if (cached) {
+          const ct = cached.headers.get('Content-Type') || '';
+          if (ct.startsWith('image/')) return cached;
+        }
+        try {
+          const response = await fetch(request);
+          if (response.ok) {
+            const ct = response.headers.get('Content-Type') || '';
+            if (ct.startsWith('image/')) {
+              cache.put(request, response.clone());
+              trimCache(IMAGE_CACHE, IMAGE_CACHE_LIMIT);
+            }
+          }
+          return response;
+        } catch {
+          return (
+            cached ||
+            new Response('', { status: 504, statusText: 'Offline image' })
+          );
+        }
+      })
+    );
+    return;
+  }
+
+  // Signed / mutating storage routes: network only
+  if (url.pathname.startsWith('/storage/')) {
     event.respondWith(fetch(request));
     return;
   }

@@ -6,12 +6,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import ProductCard, { type ColorVariant } from '@/components/ProductCard';
 import { getColorHex } from '@/components/ProductCard';
-import { supabase } from '@/lib/supabase';
-import { cachedQuery } from '@/lib/query-cache';
 import { HERO_IMAGES_OTHER_PAGES } from '@/lib/hero-images';
 import AnimatedSection from '@/components/AnimatedSection';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCMS } from '@/context/CMSContext';
+import { optimizedImageUrl } from '@/lib/image-url';
 
 function ShopContent() {
   usePageTitle('Shop All Products');
@@ -63,73 +62,28 @@ function ShopContent() {
     fetchCategories();
   }, []);
 
-  // Fetch Products
+  // Fetch Products via cached storefront API (avoids heavy browser→/rest/v1 embeds)
   useEffect(() => {
     async function fetchProducts() {
       setLoading(true);
       try {
-        const search = searchParams?.get('search');
-        const cacheKey = `shop:${selectedCategory}:${search || ''}:${priceRange.join('-')}:${selectedRating}:${inStockOnly}:${sortBy}:${page}`;
+        const search = searchParams?.get('search') || '';
+        const qs = new URLSearchParams({
+          limit: String(productsPerPage),
+          page: String(page),
+          sort: sortBy,
+        });
+        if (search) qs.set('search', search);
+        if (selectedCategory !== 'all') qs.set('category', selectedCategory);
 
-        const { data, count, error } = await cachedQuery<{ data: any; count: any; error: any }>(
-          cacheKey,
-          async () => {
-            let query = supabase
-              .from('products')
-              .select(`
-                *,
-                categories!inner(name, slug),
-                product_images!product_id(url, position),
-                product_variants(id, name, price, quantity, option1, option2, image_url)
-              `, { count: 'exact' })
-              .order('position', { foreignTable: 'product_images', ascending: true });
+        const res = await fetch(`/api/storefront/products?${qs.toString()}`);
+        if (!res.ok) throw new Error('Failed to load products');
+        const payload = await res.json();
+        const data = Array.isArray(payload) ? payload : payload.products || [];
+        const count = Array.isArray(payload) ? data.length : payload.count || 0;
 
-            if (search) query = query.ilike('name', `%${search}%`);
-
-            if (selectedCategory !== 'all') {
-              const categoryObj = categories.find(c => c.slug === selectedCategory);
-              if (categoryObj) {
-                const targetSlugs = [selectedCategory];
-                const childSlugs = categories
-                  .filter(c => c.parent_id === categoryObj.id)
-                  .map(c => c.slug);
-                targetSlugs.push(...childSlugs);
-                query = query.in('categories.slug', targetSlugs);
-              } else {
-                query = query.eq('categories.slug', selectedCategory);
-              }
-            }
-
-            if (priceRange[0] > 0) query = query.gte('price', priceRange[0]);
-            if (priceRange[1] < 5000) query = query.lte('price', priceRange[1]);
-            if (selectedRating > 0) query = query.gte('rating_avg', selectedRating);
-            if (inStockOnly) query = query.gt('quantity', 0);
-
-            switch (sortBy) {
-              case 'price-low':
-                query = query.order('price', { ascending: true }); break;
-              case 'price-high':
-                query = query.order('price', { ascending: false }); break;
-              case 'rating':
-                query = query.order('rating_avg', { ascending: false }); break;
-              case 'new':
-              case 'popular':
-              default:
-                query = query.order('created_at', { ascending: false }); break;
-            }
-
-            const from = (page - 1) * productsPerPage;
-            const to = from + productsPerPage - 1;
-            query = query.range(from, to);
-            return query as any;
-          },
-          2 * 60 * 1000
-        );
-
-        if (error) throw error;
-
-        if (data) {
-          const formattedProducts = data.map((p: any) => {
+        const formattedProducts = data
+          .map((p: any) => {
             const variants = p.product_variants || [];
             const hasVariants = variants.length > 0;
             const minVariantPrice = hasVariants ? Math.min(...variants.map((v: any) => v.price || p.price)) : undefined;
@@ -156,6 +110,8 @@ function ShopContent() {
               }
             }
 
+            const cat = Array.isArray(p.categories) ? p.categories[0] : p.categories;
+
             return {
               id: p.id,
               slug: p.slug,
@@ -163,22 +119,32 @@ function ShopContent() {
               price: p.price,
               originalPrice: p.compare_at_price,
               salePrice: p.sale_price || null,
-              image: p.product_images?.[0]?.url || 'https://via.placeholder.com/800x800?text=No+Image',
+              image: optimizedImageUrl(p.product_images?.[0]?.url, 600) || 'https://via.placeholder.com/800x800?text=No+Image',
               rating: p.rating_avg || 0,
               reviewCount: 0,
               badge: p.compare_at_price > p.price ? 'Sale' : undefined,
               inStock: effectiveStock > 0,
               maxStock: effectiveStock || 50,
               moq: p.moq || 1,
-              category: p.categories?.name,
+              category: cat?.name,
               hasVariants,
               minVariantPrice,
               colorVariants,
+              _price: Number(p.price) || 0,
+              _rating: Number(p.rating_avg) || 0,
+              _qty: Number(effectiveStock) || 0,
             };
+          })
+          .filter((p: any) => {
+            if (priceRange[0] > 0 && p._price < priceRange[0]) return false;
+            if (priceRange[1] < 5000 && p._price > priceRange[1]) return false;
+            if (selectedRating > 0 && p._rating < selectedRating) return false;
+            if (inStockOnly && p._qty <= 0) return false;
+            return true;
           });
-          setProducts(formattedProducts);
-          setTotalProducts(count || 0);
-        }
+
+        setProducts(formattedProducts);
+        setTotalProducts(count || 0);
       } catch (err) {
         console.error('Error fetching products:', err);
       } finally {
@@ -186,7 +152,7 @@ function ShopContent() {
       }
     }
     fetchProducts();
-  }, [selectedCategory, priceRange, selectedRating, inStockOnly, sortBy, page, searchParams, categories]);
+  }, [selectedCategory, priceRange, selectedRating, inStockOnly, sortBy, page, searchParams]);
 
   const totalPages = Math.ceil(totalProducts / productsPerPage);
   const currentSearch = searchParams?.get('search') || '';
