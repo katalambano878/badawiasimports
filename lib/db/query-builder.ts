@@ -244,6 +244,16 @@ function splitTopLevel(s: string): string[] {
 }
 
 // ---- the chainable query builder -------------------------------------------
+/** PostgREST embed aggregate: related(count) → [{ count: N }] */
+function isCountOnlyEmbed(parsed: ParsedSelect): boolean {
+  return (
+    !parsed.star &&
+    parsed.embeds.length === 0 &&
+    parsed.columns.length === 1 &&
+    parsed.columns[0] === "count"
+  );
+}
+
 class QueryBuilder implements PromiseLike<{ data: any; error: any; count: number | null }> {
   private table: string;
   private action: "select" | "insert" | "update" | "upsert" | "delete" = "select";
@@ -664,6 +674,27 @@ class QueryBuilder implements PromiseLike<{ data: any; error: any; count: number
         const edge = this.findReverseEdge(embedTable);
         const fkCol = edge?.column ?? `${singularize(this.table)}_id`;
         const parentIds = Array.from(new Set(rows.map((r) => r.id).filter(Boolean)));
+
+        // PostgREST aggregate embed: related(count) → [{ count: N }]
+        if (isCountOnlyEmbed(embed.select)) {
+          const counts = new Map<any, number>();
+          if (parentIds.length) {
+            const ph = parentIds.map((_, i) => `$${i + 1}`).join(",");
+            const res = await pool.query(
+              `SELECT ${ident(fkCol)} AS _fk, count(*)::int AS count
+               FROM ${ident(embedTable)}
+               WHERE ${ident(fkCol)} IN (${ph})
+               GROUP BY ${ident(fkCol)}`,
+              parentIds
+            );
+            for (const row of res.rows) counts.set(row._fk, Number(row.count) || 0);
+          }
+          for (const r of rows) {
+            r[embed.alias] = [{ count: counts.get(r.id) ?? 0 }];
+          }
+          continue;
+        }
+
         const wantId = embedWantsId(embed.select);
         const wantFk = embed.select.star || embed.select.columns.includes(fkCol);
         const innerCols = this.embedColumns(embed.select, fkCol);
