@@ -41,6 +41,24 @@ export async function GET() {
       const { query } = await import('@/lib/db/pool');
       await query('SELECT 1 AS ok');
       checks.database = 'up';
+      const required = await query<{ missing: string | null }>(
+        `SELECT CASE
+           WHEN to_regclass('public.orders') IS NULL THEN 'orders'
+           WHEN to_regclass('public.products') IS NULL THEN 'products'
+           WHEN to_regclass('public.payment_callback_events') IS NULL THEN 'payment_callback_events'
+           WHEN to_regclass('public.payment_attempts') IS NULL THEN 'payment_attempts'
+           WHEN to_regclass('public.sms_message_events') IS NULL THEN 'sms_message_events'
+           WHEN to_regclass('auth.users') IS NULL THEN 'auth.users'
+           ELSE NULL
+         END AS missing`
+      );
+      const missing = required.rows[0]?.missing;
+      if (missing) {
+        checks.ok = false;
+        checks.schema = `missing:${missing}`;
+      } else {
+        checks.schema = 'ok';
+      }
     } catch {
       checks.ok = false;
       checks.database = 'down';

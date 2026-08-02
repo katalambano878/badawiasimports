@@ -36,6 +36,9 @@ export function getPool(): Pool {
     connectionString,
     max: Number(process.env.PG_POOL_MAX || 10),
     idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
+    // Cap runaway queries; override per-query if a batch job needs longer.
+    options: "-c statement_timeout=30000",
     // Self-hosted Postgres on the same host / private network: TLS optional.
     ssl:
       process.env.PGSSL === "require"

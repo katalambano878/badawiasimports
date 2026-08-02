@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 import { dbAdmin } from '@/lib/db/admin';
+import { recordPaymentAttempt } from '@/lib/db/payments-ledger';
 
 export async function POST(req: Request) {
     try {
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
         // pages need it to read the order back without an open RLS policy).
         const { data: existingOrder, error: orderFetchError } = await dbAdmin
             .from('orders')
-            .select('order_number, payment_status, metadata, total')
+            .select('id, order_number, payment_status, metadata, total, user_id, currency')
             .eq('order_number', orderId)
             .single();
 
@@ -78,6 +79,19 @@ export async function POST(req: Request) {
         if (orderUpdateError) {
             return NextResponse.json({ success: false, message: `Failed to prepare payment: ${orderUpdateError.message}` }, { status: 500 });
         }
+
+        await recordPaymentAttempt({
+            orderId: existingOrder.id,
+            orderNumber: orderId,
+            userId: existingOrder.user_id,
+            gateway: 'moolre',
+            internalReference: uniqueRef,
+            expectedAmount: amount,
+            currency: existingOrder.currency || 'GHS',
+            status: 'initiated',
+            idempotencyKey: `moolre:${uniqueRef}`,
+            metadata: { customer_email: customerEmail || null },
+        });
 
         const lookupToken = (existingOrder.metadata as { lookup_token?: string } | null)?.lookup_token || '';
         const tokenSuffix = lookupToken ? `&token=${encodeURIComponent(lookupToken)}` : '';

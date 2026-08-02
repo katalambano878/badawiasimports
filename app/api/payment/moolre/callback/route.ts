@@ -5,6 +5,7 @@ import { sendOrderConfirmation } from '@/lib/notifications';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
 import { checkMoolreTransaction } from '@/lib/moolre';
 import { isPlainPostgres } from '@/lib/db/mode';
+import { finalizePaymentAttempt } from '@/lib/db/payments-ledger';
 
 async function recordCallbackEvent(opts: {
   reference: string | null;
@@ -307,6 +308,14 @@ export async function POST(req: Request) {
                 console.error('[Callback] Notification failed:', notifyError.message);
             }
 
+            await finalizePaymentAttempt({
+                internalReference: String(rawExternalRef || merchantOrderRef),
+                gateway: 'moolre',
+                gatewayReference: String(moolreReference || ''),
+                status: 'successful',
+                amountPaid: Number(existingOrder.total),
+            });
+
             await recordCallbackEvent({
                 reference: merchantOrderRef,
                 externalEventId: String(moolreReference || ''),
@@ -328,6 +337,13 @@ export async function POST(req: Request) {
 
             if (failedOrder?.payment_status === 'paid') {
                 console.warn('[Callback] Ignoring late failure for already-paid order:', merchantOrderRef);
+                await finalizePaymentAttempt({
+                    internalReference: String(rawExternalRef || merchantOrderRef),
+                    gateway: 'moolre',
+                    gatewayReference: String(moolreReference || ''),
+                    status: 'failed',
+                    failureReason: 'late_failure_ignored_already_paid',
+                });
                 return NextResponse.json({ success: true, message: 'Order already paid' });
             }
 
@@ -344,6 +360,23 @@ export async function POST(req: Request) {
                     metadata: mergedFailureMetadata
                 })
                 .eq('order_number', merchantOrderRef);
+
+            await finalizePaymentAttempt({
+                internalReference: String(rawExternalRef || merchantOrderRef),
+                gateway: 'moolre',
+                gatewayReference: String(moolreReference || ''),
+                status: 'failed',
+                failureReason: String(body.message || 'Payment failed'),
+            });
+
+            await recordCallbackEvent({
+                reference: merchantOrderRef,
+                externalEventId: String(moolreReference || ''),
+                payload: body,
+                signatureStatus: secretMatches ? 'matched' : 'absent',
+                processingStatus: 'processed',
+                errorMessage: String(body.message || 'Payment failed'),
+            });
 
             return NextResponse.json({ success: false, message: 'Payment not successful' });
         }

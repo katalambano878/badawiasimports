@@ -160,7 +160,19 @@ function formatPhoneNumber(phone: string): string {
     return '+' + cleaned;
 }
 
-export async function sendSMS({ to, message }: { to: string; message: string }) {
+export async function sendSMS({
+    to,
+    message,
+    eventType = 'generic',
+    orderNumber,
+    paymentReference,
+}: {
+    to: string;
+    message: string;
+    eventType?: string;
+    orderNumber?: string;
+    paymentReference?: string;
+}) {
     // Moolre SMS API only requires X-API-VASKEY header for authentication
     // See: https://docs.moolre.com/#/send-sms
     // Allow MOOLRE_SMS_API_KEY or fall back to MOOLRE_API_KEY
@@ -172,6 +184,25 @@ export async function sendSMS({ to, message }: { to: string; message: string }) 
     }
 
     const recipient = formatPhoneNumber(to);
+    const { claimSmsSend, markSmsSent } = await import('@/lib/db/payments-ledger');
+    const idempotencyKey = [
+        'sms',
+        eventType,
+        orderNumber || paymentReference || 'none',
+        recipient,
+    ].join(':');
+
+    const shouldSend = await claimSmsSend({
+        eventType,
+        orderNumber,
+        paymentReference,
+        recipient,
+        idempotencyKey,
+    });
+    if (!shouldSend) {
+        console.log('[SMS] Skipping duplicate send for', eventType, orderNumber || '');
+        return { status: 1, skipped_duplicate: true };
+    }
 
     try {
         console.log(`[SMS] Sending to ${maskPhone(recipient)}`);
@@ -205,6 +236,7 @@ export async function sendSMS({ to, message }: { to: string; message: string }) 
         if (!contentType.includes('application/json')) {
             const text = await response.text();
             console.error('[SMS] Non-JSON response:', text.slice(0, 200));
+            await markSmsSent(idempotencyKey, null, text.slice(0, 200));
             return { status: 0, error: text.slice(0, 200) };
         }
 
@@ -212,10 +244,14 @@ export async function sendSMS({ to, message }: { to: string; message: string }) 
         console.log('[SMS] Result:', result.status === 1 ? 'Success' : 'Failed', '| Code:', result.code);
         if (result.status !== 1) {
             console.log('[SMS] Full Response:', JSON.stringify(result, null, 2));
+            await markSmsSent(idempotencyKey, null, String(result.message || result.code || 'failed'));
+        } else {
+            await markSmsSent(idempotencyKey, String(result.data?.messageid || result.code || ''));
         }
         return result;
     } catch (error: any) {
         console.error('[SMS] Error:', error.message);
+        await markSmsSent(idempotencyKey, null, error.message || 'error');
         return null;
     }
 }
@@ -341,7 +377,9 @@ ${emailButton('View Order in Admin', `${baseUrl}/admin/orders/${id}`)}
 
         await sendSMS({
             to: phone,
-            message: smsMessage
+            message: smsMessage,
+            eventType: 'order_confirmation',
+            orderNumber: String(order_number || id || ''),
         });
     }
 }
@@ -430,7 +468,9 @@ ${emailButton('Track Your Order', trackingUrl)}
     if (phone) {
         await sendSMS({
             to: phone,
-            message: smsMessage
+            message: smsMessage,
+            eventType: `order_status_${newStatus}`,
+            orderNumber: String(order_number || id || ''),
         });
     }
 }
@@ -481,7 +521,9 @@ ${emailButton('Start Shopping', `${BRAND.url}/shop`)}
     if (phone) {
         await sendSMS({
             to: phone,
-            message: `Welcome ${firstName}! Thanks for joining ${BRAND.name}.`
+            message: `Welcome ${firstName}! Thanks for joining ${BRAND.name}.`,
+            eventType: 'welcome',
+            orderNumber: email,
         });
     }
 }
@@ -546,7 +588,9 @@ ${emailButton('Pay Now — GH₵' + Number(total).toFixed(2), paymentUrl, '#d977
 
         await sendSMS({
             to: phone,
-            message: smsMessage
+            message: smsMessage,
+            eventType: 'payment_link',
+            orderNumber: String(order_number || id || ''),
         });
     }
 }

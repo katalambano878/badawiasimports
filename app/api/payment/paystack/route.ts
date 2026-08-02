@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { dbAdmin } from '@/lib/db/admin';
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from '@/lib/rate-limit';
+import { recordPaymentAttempt } from '@/lib/db/payments-ledger';
 
 
 /**
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
 
     const { data: existingOrder, error: orderFetchError } = await dbAdmin
       .from('orders')
-      .select('order_number, payment_status, total, metadata')
+      .select('id, order_number, payment_status, total, metadata, user_id, currency')
       .eq('order_number', orderId)
       .single();
     if (orderFetchError || !existingOrder) {
@@ -65,6 +66,18 @@ export async function POST(req: Request) {
 
     // Unique reference for this payment attempt (allow retries)
     const reference = `${orderId}-R${Date.now()}`;
+
+    await recordPaymentAttempt({
+      orderId: existingOrder.id,
+      orderNumber: orderId,
+      userId: existingOrder.user_id,
+      gateway: 'paystack',
+      internalReference: reference,
+      expectedAmount: amount,
+      currency: existingOrder.currency || 'GHS',
+      status: 'initiated',
+      idempotencyKey: `paystack:${reference}`,
+    });
 
     const payload = {
       email: customerEmail || 'customer@example.com',
