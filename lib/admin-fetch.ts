@@ -1,12 +1,12 @@
 'use client';
 
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/app-client';
 
 /** Calls an admin API route with the signed-in session and returns parsed JSON or throws a readable error. */
 export async function adminFetch<T = unknown>(url: string, init: RequestInit = {}): Promise<T> {
   const {
     data: { session },
-  } = await supabase.auth.getSession();
+  } = await db.auth.getSession();
   const headers = new Headers(init.headers);
   if (session?.access_token) headers.set('Authorization', `Bearer ${session.access_token}`);
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
